@@ -19,10 +19,16 @@ function cfg = config()
     cfg.paths.derived        = fullfile(repo_root, 'data', 'derived');     % generated (patch pairs, results)
 
     % --- eye optics (Watson OTF) ---
-    cfg.optics.ppd            = 60;      % pixels per degree
+    cfg.optics.ppd            = 60;      % pixels/deg for GTR images / display stimuli
+    cfg.optics.ppd_natural    = 64;      % pixels/deg for the calibrated natural images (64 px = 1 deg)
     cfg.optics.pupil_diameter = 4;       % mm
     cfg.optics.wavelength     = 550;     % nm
     cfg.optics.apply          = true;    % apply optics (the "_otf" / filter == 1 path)
+
+    % --- calibrated natural-image dataset (for learning priors: stages s1, s2) ---
+    cfg.natural.sets      = {'Set9_16', 'Set10_16', 'Set12_16'};  % file-name stems in cfg.paths.natural_images
+    cfg.natural.max_val   = 2^14 - 1;   % 14-bit pixel max (images scaled by 255/max_val)
+    cfg.natural.n_samples = 20;         % random patches sampled per image
 
     % --- camera RGB -> human LMS cone matrix ---
     cfg.color.rgb_to_lms = [ 4.370, 1.338,  0.118;
