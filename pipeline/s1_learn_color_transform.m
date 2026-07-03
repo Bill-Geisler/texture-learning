@@ -55,18 +55,3 @@ function coeff = s1_learn_color_transform(cfg)
     save(out_path, 'coeff');
     fprintf('s1: saved LMS->ABR rotation to %s (%d pixels from %d images)\n', out_path, n, numel(files));
 end
-
-function files = list_natural_images(cfg)
-% Full paths of all natural images across the configured sets.
-    files = {};
-    for s = 1:numel(cfg.natural.sets)
-        d = dir(fullfile(cfg.paths.natural_images, [cfg.natural.sets{s} '_*.png']));
-        for k = 1:numel(d)
-            files{end+1} = fullfile(d(k).folder, d(k).name); %#ok<AGROW>
-        end
-    end
-    if isempty(files)
-        error('s1:noImages', 'No natural images found in %s (looked for %s_*.png).', ...
-            cfg.paths.natural_images, strjoin(cfg.natural.sets, ', '));
-    end
-end
