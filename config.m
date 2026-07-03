@@ -37,6 +37,13 @@ function cfg = config()
     cfg.norm.target_mean     = 128;
     cfg.norm.target_contrast = 0.25;
 
+    % --- decision-variable computation params (content-similarity / mk_phi context) ---
+    cfg.dv.power_suppress     = 10;    % weak Fourier-power suppression (beta) for content similarity
+    cfg.dv.edge_thresh        = 50;    % gradient threshold for the edge-count feature
+    cfg.dv.sd1  = 1;  cfg.dv.nsd1 = 3; % 1st-derivative steerable kernel (edges)
+    cfg.dv.sd2  = 1;  cfg.dv.nsd2 = 3; % 2nd-derivative steerable kernel (bars)
+    cfg.dv.contrast_normalize = true;  % contrast-normalize before edge features
+
     % --- reproducibility ---
     cfg.seed = 0;
 
@@ -52,6 +59,7 @@ function cfg = config()
         'edge count','edge mag','edge ori','edge mag x ori', ...
         'bar count','bar mag','bar ori','bar mag x ori', ...
         'cs ratio small','cs linear small','cs linear large' };
-    cfg.features.spot_dims = [1 13 14];     % default spot/color features used by the pipeline
-    cfg.features.edge_dims = [5 7 9 10];    % default edge/bar features used by the pipeline
+    cfg.features.spot_dims    = [1 13 14];  % spot/color features fed to the spot DV
+    cfg.features.edge_dims    = [5 7 9 10]; % edge/bar features computed by dv_edge_hist
+    cfg.features.edge_dv_dims = [5 9 10];   % subset fed to the content edge DV (skips feature 7)
 end
