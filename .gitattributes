@@ -1,0 +1,16 @@
+# Normalize line endings: store text as LF in the repo, check out native.
+* text=auto
+
+*.m    text
+*.md   text
+*.txt  text
+*.json text
+
+*.mat binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.tif binary
+*.pdf binary
+*.fig binary
+*.mp4 binary
