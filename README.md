@@ -104,4 +104,4 @@ Shared low-level code lives in `vision-commons` (not here), so it isn't duplicat
 
 ## License & citation
 
-Code released under CC-BY-NC 4.0 (matching the preprint). If you use it, please cite the paper above.
+Code released under the MIT License (see `LICENSE`). If you use it, please cite the paper above.
