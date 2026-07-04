@@ -57,8 +57,8 @@ The pipeline uses spot dims **[1 13 14]** and edge dims **[5 9 10]** in the cont
 
 ## Function renames (old flat name → new)
 `otf`→`vislib.watson_otf`, `aply_otf`→`vislib.otf_filter`, `dsmp`→`vislib.downsample`,
-`adobe_compress/expand`→`vislib.gamma_compress/expand`, `mk_dg_hv`→`vislib.deriv_gauss1_kernels`,
-`mk_2dg_sf`→`vislib.deriv_gauss2_kernels`, `imgrad`→`vislib.grad1_response`,
+`adobe_compress/expand`→`vislib.gamma_compress/expand`, `mk_dg_hv`→`vislib.steerable_kernels`,
+`mk_2dg_sf`→`vislib.gauss_deriv2_kernels`, `imgrad`→`vislib.steerable_grad_response`,
 `imgrad2`→`vislib.grad2_response`, `cen_sur`→`vislib.center_surround`, `rot`→`nat_stat_bayes.apply_color_rotation`,
 `mk_bins`→`nat_stat_bayes.make_bins`, `find_bnd`→`nat_stat_bayes.find_bin_bound`,
 `mk_bb`→`nat_stat_bayes.load_bin_bounds`, `Rcc`→`nat_stat_bayes.xcorr_patches`;
