@@ -44,7 +44,7 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | 3 | `s3_make_nearfar_pairs(cfg, lev)` | `patch_pairs_<lev>.mat` — near/far training pairs |
 | 4 | `s4_optimize_bins(cfg, dim, lev)` | `AHEO<btype><dim><lev>.mat` — adaptive histogram bins |
 | 5 | `s5_train_decision_vars(cfg, lev)` | `dbnd{h,e,c,b,bc}NO<lev>.mat` — trained decision-variable bounds |
-| 6 | `s6_selfsup_discrimination(cfg, method)` | per-image self-supervised discrimination accuracy *(pending, see Status)* |
+| 6 | `s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
 | 7 | `s7_segment_gtr(cfg, method)` | GTR segmentation results *(pending, see Status)* |
 
 Example (regenerate the level-1 model):
@@ -56,6 +56,21 @@ s3_make_nearfar_pairs(cfg, 1);
 for dim = [1 5 6 7 9 10 11 13 14], s4_optimize_bins(cfg, dim, 1); end
 s5_train_decision_vars(cfg, 1);
 ```
+
+## Quick demo
+
+To see the trained model produce results without re-running the (expensive) training, run the demo. It
+uses the shipped model in `data/models` to run self-supervised discrimination (stage s6) on Brodatz GTR
+images and plots the near-far accuracy surface (cf. the paper's Fig. 4):
+
+```matlab
+run('examples/demo.m')      % sets up the path, runs s6 on Brodatz, prints + plots the result
+```
+
+It reports the peak accuracy and shows the accuracy surface over the grouping-criterion x
+mutual-similarity-weight grid. Expect a few minutes (it builds GTR images and computes all pairwise
+patch similarities). Requires the Brodatz sheets in `global_data/textures/brodatz/`; other texture
+datasets need additional data (see `../USER_TODO.md`).
 
 ## Repository layout
 
@@ -74,8 +89,9 @@ Shared low-level code lives in `vision-commons` (not here), so it isn't duplicat
 
 ## Status & caveats
 
-- Pipeline **stages 1–5 are complete**; **stages 6–7 are pending** the texture-dataset layout
-  (VisTex/McGill and the Pertex format) — see `../USER_TODO.md` and `../QUESTIONS_FOR_GEISLER.md`.
+- Pipeline **stages 1–6 are implemented**; **stage 7 (segmentation) is pending**. Stage 6 runs on
+  Brodatz/Fabric now; loading Pertex/VisTex/McGill needs additional data — see `../USER_TODO.md` and
+  `../QUESTIONS_FOR_GEISLER.md`.
 - During the reorganization several bugs were fixed (e.g. an optics double-mean, a center-surround CDF
   mix-up); re-running therefore differs slightly from the original preprint artifacts, which should be
   regenerated. Details in `../REORGANIZATION_PLAN.md` and (once verified) `CHANGELOG.md`.

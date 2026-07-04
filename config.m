@@ -50,6 +50,14 @@ function cfg = config()
     cfg.dv.sd2  = 1;  cfg.dv.nsd2 = 3; % 2nd-derivative steerable kernel (bars)
     cfg.dv.contrast_normalize = true;  % contrast-normalize before edge features
 
+    % --- GTR images / segmentation experiments (stages s6, s7) ---
+    cfg.gtr.szp          = 10;    % image size in patches (10x10 = 100 patches)
+    cfg.gtr.n_regions    = 5;     % texture regions per GTR image (ntexr)
+    cfg.gtr.seed_radius  = 1.0;   % region-seed radius as fraction of max
+    cfg.gtr.coverage     = 1.0;   % fraction of the grid filled by regions
+    cfg.gtr.dcrit        = 7.0;   % min separation (patches) for a "far" pair
+    cfg.gtr.power_suppress = 16;  % weak-power beta for the per-pair DVs (note: content-sim uses cfg.dv.power_suppress=10)
+
     % --- reproducibility ---
     cfg.seed = 0;
 
