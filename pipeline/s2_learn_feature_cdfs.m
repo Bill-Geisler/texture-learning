@@ -68,7 +68,7 @@ function s2_learn_feature_cdfs(cfg)
             a = vislib.cntrst_norm(abr(:, :, 1), c0, psz);
 
             % 1st-derivative steerable responses (keep above-threshold)
-            [gm, go] = vislib.grad1_response(a, sd1, nsd1);
+            [gm, go] = vislib.steerable_grad_response(a, sd1, nsd1);
             keep = gm > thresh;
             vals = gm(keep); ori = go(keep); m = numel(vals);
             g1m(n_g1+1:n_g1+m)  = vals;

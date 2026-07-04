@@ -47,7 +47,7 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | 6 | `s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
 | 7 | `s7_segment_gtr(cfg, method, itype, lev, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
-Example (regenerate the level-1 model):
+Example (regenerate the eccentricity level 1 (=fovea) model):
 ```matlab
 setup; cfg = config;
 s1_learn_color_transform(cfg);
