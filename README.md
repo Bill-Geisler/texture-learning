@@ -11,12 +11,12 @@ are usually the same texture, distant patches usually different — and, under m
 optimal *near-vs-far* decision boundary is the same as the optimal *same-vs-different* boundary. So a
 biologically-plausible **Hierarchical Bayesian Observer (HBO)** model of texture discrimination can be
 trained directly from *unlabelled* natural images, and then used to segment "grown-texture-region"
-(GTR) images. See the paper, and `docs/proximity-paper.pdf` / `docs/segmentation-paper.pdf` for the
-foundational HBO model this builds on.
+(GTR) images. See the [foundational segmentation paper](https://www.biorxiv.org/content/10.64898/2026.05.06.723304v1.abstract)
+for the HBO model this builds on.
 
 ## Dependencies
 
-- **[vision-commons](../vision-commons)** — the lab's shared MATLAB library (git submodule, or a sibling
+- **[vision-commons](https://github.com/abhranildas/vision-commons)** — the lab's shared MATLAB library (git submodule, or a sibling
   folder during local dev). Provides `vislib.*` (optics, filters, normalization, …) and
   `nat_stat_bayes.*` (the decision-variable / natural-scene-statistics toolkit).
 - **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
