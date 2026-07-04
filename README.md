@@ -45,7 +45,7 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | 4 | `s4_optimize_bins(cfg, dim, lev)` | `AHEO<btype><dim><lev>.mat` — adaptive histogram bins |
 | 5 | `s5_train_decision_vars(cfg, lev)` | `dbnd{h,e,c,b,bc}NO<lev>.mat` — trained decision-variable bounds |
 | 6 | `s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
-| 7 | `s7_segment_gtr(cfg, method)` | GTR segmentation results *(pending, see Status)* |
+| 7 | `s7_segment_gtr(cfg, method, itype, lev, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
 Example (regenerate the level-1 model):
 ```matlab
@@ -89,8 +89,8 @@ Shared low-level code lives in `vision-commons` (not here), so it isn't duplicat
 
 ## Status & caveats
 
-- Pipeline **stages 1–6 are implemented**; **stage 7 (segmentation) is pending**. Stage 6 runs on
-  Brodatz/Fabric now; loading Pertex/VisTex/McGill needs additional data — see `../USER_TODO.md` and
+- Pipeline **stages 1–7 are all implemented**. Stages 6–7 run on Brodatz/Fabric now (verified
+  end-to-end); loading Pertex/VisTex/McGill needs additional data — see `../USER_TODO.md` and
   `../QUESTIONS_FOR_GEISLER.md`.
 - During the reorganization several bugs were fixed (e.g. an optics double-mean, a center-surround CDF
   mix-up); re-running therefore differs slightly from the original preprint artifacts, which should be
