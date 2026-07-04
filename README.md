@@ -1,7 +1,7 @@
 # texture-learning
 
 Code for **"Proximity as a Ground-Truth Proxy for Training Texture Discrimination and Segmentation"**
-(W. S. Geisler, bioRxiv 2026; `docs/proximity-paper.pdf`).
+(W. S. Geisler, [bioRxiv 2026](https://www.biorxiv.org/content/10.64898/2026.05.12.724620v1.abstract)).
 
 ## What it does
 
