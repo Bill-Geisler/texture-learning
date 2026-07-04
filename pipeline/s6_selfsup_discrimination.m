@@ -18,6 +18,9 @@ function out = s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)
 %   Run `setup` first; requires stages 2,4,5 artifacts + IntClassNorm.
 %   NOTE: pd differs by method (bc=4, others=8) and levb=1 for bins — preserved,
 %   flagged for Geisler (see QUESTIONS_FOR_GEISLER.md).
+%
+%   Shared helpers (also used by s7): load_dv_handles, neighbor_far_responses,
+%   self_sup_decision, nearfar_score_grid.
 
     mustBeMember(method, {'bc', 'bc_shft', 'c_shft'});
     switch method
@@ -61,15 +64,9 @@ function out = s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)
         % per-image self-supervised step -> combined near/far decision variables qbs/qbd
         [qbs, qbd] = self_sup_decision(method, R, dv);
 
-        % sweep gc (outer) x wm (inner)
-        for j = 1:ngc
-            gc = gc_vec(j);
-            for k = 1:nms
-                wm = wm_vec(k);
-                [pc(j,k,trl), pcs(j,k,trl), pcd(j,k,trl), pcnf(j,k,trl)] = ...
-                    score(qbs, qbd, R.rmn, R.rmf, R.same_near, R.same_far, gc, wm);
-            end
-        end
+        % sweep grouping criterion (gc) x mutual-similarity weight (wm)
+        [pc(:,:,trl), pcs(:,:,trl), pcd(:,:,trl), pcnf(:,:,trl)] = ...
+            nearfar_score_grid(qbs, qbd, R, gc_vec, wm_vec);
     end
 
     out.pcav   = mean(pc,   3);
@@ -78,103 +75,4 @@ function out = s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)
     out.pcnfav = mean(pcnf, 3);
     out.gc = gc_vec;  out.wm = wm_vec;  out.method = method;  out.itype = itype;  out.lev = lev;
     fprintf('s6 (%s, itype %d, lev %d): mean near-far PC max %.3f\n', method, itype, lev, max(out.pcav,[],'all'));
-end
-
-% ------------------------------------------------------------------------------
-function dv = load_dv_handles(cfg, lev, load_bc)
-    tag = num2str(lev);
-    dv.h = handle_for('dbndh');
-    dv.e = handle_for('dbnde');
-    dv.c = handle_for('dbndc');
-    dv.b = handle_for('dbndb');
-    if load_bc
-        dv.bc = handle_for('dbndbc');
-    end
-    function h = handle_for(var)
-        s = load(fullfile(cfg.paths.models, [var 'NO' tag '.mat']), var);
-        h = quad2fun(s.(var), 0);
-    end
-end
-
-% ------------------------------------------------------------------------------
-function [qbs, qbd] = self_sup_decision(method, R, dv)
-% Returns the combined border+content decision variable for near (qbs) and far
-% (qbd) pairs after the per-image self-supervised step.
-    n = R.ncnt;
-    qbs = zeros(1, n);  qbd = zeros(1, n);
-    switch method
-        case 'bc'                                   % refit the bc bound on this image
-            bd = classify_normals([R.rbn', R.rcn'], [R.rbf', R.rcf'], 'input_type', 'samp', 'plotmode', 0);
-            dvbc = quad2fun(bd.samp_opt_bd, 0);
-            for i = 1:n
-                qbs(i) = dvbc([R.rbn(i), R.rcn(i)]');
-                qbd(i) = dvbc([R.rbf(i), R.rcf(i)]');
-            end
-        case 'bc_shft'                              % shift the pre-trained bc DV
-            rbcn = apply_bc(dv.bc, R.rbn, R.rcn);
-            rbcf = apply_bc(dv.bc, R.rbf, R.rcf);
-            copt = best_criterion(rbcn, rbcf, 5);
-            qbs = rbcn - copt;
-            qbd = rbcf - copt;
-        case 'c_shft'                               % shift the content DV, then bc bound
-            rcn = nan_to_zero(R.rcn);  rcf = nan_to_zero(R.rcf);
-            rbn = nan_to_zero(R.rbn);  rbf = nan_to_zero(R.rbf);
-            copt = best_criterion(rcn, rcf, 1);
-            for i = 1:n
-                qbs(i) = dv.bc([rbn(i), rcn(i) - copt]');
-                qbd(i) = dv.bc([rbf(i), rcf(i) - copt]');
-            end
-    end
-end
-
-function v = apply_bc(dvbc, rb, rc)
-    v = zeros(1, numel(rb));
-    for i = 1:numel(rb)
-        v(i) = dvbc([rb(i), rc(i)]');           % border-first ordering (see merge spec)
-    end
-    v(isnan(v)) = 0;
-end
-
-function x = nan_to_zero(x), x(isnan(x)) = 0; end
-
-function copt = best_criterion(near_vals, far_vals, hi_fallback)
-% Criterion maximizing same/different accuracy (near = same, far = different).
-    lo = mean(far_vals);  hi = mean(near_vals);
-    if isnan(hi), hi = lo + hi_fallback; end
-    step = (hi - lo) / 100;
-    if step <= 0, copt = lo; return; end
-    copt = lo;  best = 0;
-    for crit = lo:step:hi
-        pc = (sum(near_vals >= crit) + sum(far_vals < crit)) / (numel(near_vals) + numel(far_vals));
-        if pc > best, best = pc; copt = crit; end
-    end
-end
-
-% ------------------------------------------------------------------------------
-function [pc, pcs, pcd, pcnf] = score(qbs, qbd, rmn, rmf, same_near, same_far, gc, wm)
-% Near-far and same-different accuracy accounting for one (gc, wm) cell.
-    ncnt = numel(qbs);
-    ncs = 0; ncd = 0; sc = 0; dc = 0; ncn = 0; ncf = 0;
-    for i = 1:ncnt
-        near_dv = qbs(i) + wm*rmn(i);
-        far_dv  = qbd(i) + wm*rmf(i);
-        if same_near(i) == 1
-            sc = sc + 1;
-            if near_dv >= gc, ncs = ncs + 1; ncn = ncn + 1; end
-        else
-            dc = dc + 1;
-            if near_dv <  gc, ncd = ncd + 1; else, ncn = ncn + 1; end
-        end
-        if same_far(i) == 1
-            sc = sc + 1;
-            if far_dv >= gc, ncs = ncs + 1; else, ncf = ncf + 1; end
-        else
-            dc = dc + 1;
-            if far_dv <  gc, ncd = ncd + 1; ncf = ncf + 1; end
-        end
-    end
-    pc   = (ncd + ncs) / (2*ncnt);
-    pcs  = ncs / sc;
-    pcd  = ncd / dc;
-    pcnf = (ncn + ncf) / (2*ncnt);
 end
