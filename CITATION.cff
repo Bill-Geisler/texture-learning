@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the associated paper below."
+title: texture-learning
+type: software
+authors:
+  - family-names: Das
+    given-names: Abhranil
+    affiliation: "Center for Perceptual Systems, The University of Texas at Austin"
+license: MIT
+repository-code: "https://github.com/Bill-Geisler/texture-learning"
+preferred-citation:
+  type: article
+  title: "Proximity as a Ground-Truth Proxy for Training Texture Discrimination and Segmentation"
+  authors:
+    - family-names: Geisler
+      given-names: Wilson S.
+  year: 2026
+  journal: bioRxiv
+  doi: "10.64898/2026.05.12.724620"
