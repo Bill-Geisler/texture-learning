@@ -9,12 +9,15 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
 %   itype: 1 Pertex | 2 Fabric | 3 Brodatz | 4 Brodatz+Fabric | 5 VisTex | 6 McGill.
 %
 %   Texture sheets are read from cfg.paths.textures/<dataset>/ . Supported:
-%   Brodatz (brodatz/B*.gif, grayscale), Fabric (fabric/FC*.png, RGB gamma-compressed),
-%   their union, VisTex (vistex/VS*.png) and McGill (mcgill/M*.png) -- both RGB
-%   gamma-compressed, using Bill's fixed 60-image index lists (vindx/mindx).
-%   Pertex (itype 1) is NOT yet wired up: the source PNGs are 1024x1024 but the
-%   pipeline needs 640x640 sheets, and the reduction Bill used is unknown
-%   (see QUESTIONS_FOR_GEISLER.md section 5).
+%   Pertex (pertex/<nnn>.png, grayscale), Brodatz (brodatz/B*.gif, grayscale),
+%   Fabric (fabric/FC*.png, RGB gamma-compressed), their union, VisTex
+%   (vistex/VS*.png) and McGill (mcgill/M*.png) -- both RGB gamma-compressed.
+%   Pertex/VisTex/McGill use Bill's fixed 60-image selections.
+%
+%   Pertex source PNGs are 1024x1024; they are resized to cfg.patch.image_size
+%   (640) on load, reproducing byte-for-byte the P<n>.mat sheets Bill distributed
+%   (imresize by 640/1024, round, uint8 -- verified identical for all images).
+%   The .mat sheets are therefore no longer needed; only the source PNGs are kept.
 
     sz = cfg.patch.image_size / ecc;
     tex = cfg.paths.textures;
@@ -52,20 +55,26 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
             files = arrayfun(@(n) fullfile(tex, 'mcgill', sprintf('M%d.png', n)), mindx, 'uni', 0);
             gray  = false(1, nimg);
             gamma = true(1, nimg);
-        case 1
-            error('load_texture_images:pertexPending', ...
-                ['Pertex (itype 1) is not wired up yet: the source PNGs are 1024x1024 grayscale, but the ', ...
-                 'pipeline needs 640x640 sheets and Bill''s P<n>.mat baked in that reduction offline ', ...
-                 '(crop vs resize -- unknown). Awaiting his answer; see QUESTIONS_FOR_GEISLER.md section 5.']);
+        case 1                                   % Pertex (Bill's fixed 60: source images 271-330; grayscale, no gamma)
+            del   = 270;                         % Bill's offset: the PerTex sheets are images 271..330
+            nimg  = 60;
+            files = arrayfun(@(k) fullfile(tex, 'pertex', sprintf('%03d.png', k + del)), 1:nimg, 'uni', 0);
+            gray  = true(1, nimg);
+            gamma = false(1, nimg);
         otherwise
             error('load_texture_images:badItype', 'itype must be 1-6, got %g.', itype);
     end
+
+    resize_pertex = (itype == 1);            % PerTex source PNGs are 1024x1024 (all other datasets already 640)
 
     imgr = zeros(sz, sz, nimg);
     imgg = zeros(sz, sz, nimg);
     imgb = zeros(sz, sz, nimg);
     for k = 1:nimg
         raw = double(imread(files{k}));
+        if resize_pertex                         % reproduce Bill's P<n>.mat sheet: 1024 -> 640, round, uint8
+            raw = double(uint8(round(imresize(raw, cfg.patch.image_size / 1024))));
+        end
         if gray(k)
             cimg = repmat(raw(:, :, 1), 1, 1, 3);
         else

@@ -93,9 +93,9 @@ Shared low-level code lives in `vislab` (not here), so it isn't duplicated acros
 
 ## Status & caveats
 
-- Pipeline **stages 1–7 are all implemented**. Stages 6–7 run on Brodatz/Fabric now (verified
-  end-to-end); loading Pertex/VisTex/McGill needs additional data — see `../USER_TODO.md` and
-  `../QUESTIONS_FOR_GEISLER.md`.
+- Pipeline **stages 1–7 are all implemented**. Stages 6–7 run end-to-end on all six texture
+  datasets (Pertex, Fabric, Brodatz, Brodatz+Fabric, VisTex, McGill). Pertex source PNGs are
+  1024×1024 and are resized to 640 on load, reproducing exactly the sheets used originally.
 - During the reorganization several bugs were fixed (e.g. an optics double-mean, a center-surround CDF
   mix-up); re-running therefore differs slightly from the original preprint artifacts, which should be
   regenerated. Details in `../REORGANIZATION_PLAN.md` and (once verified) `CHANGELOG.md`.
