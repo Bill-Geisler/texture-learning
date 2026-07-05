@@ -16,8 +16,8 @@ for the HBO model this builds on.
 
 ## Dependencies
 
-- **[vision-commons](https://github.com/abhranildas/vision-commons)** — the lab's shared MATLAB library (git submodule, or a sibling
-  folder during local dev). Provides `vislib.*` (optics, filters, normalization, …) and
+- **[vision-commons](https://github.com/abhranildas/vision-commons)** — the lab's shared MATLAB library (a sibling
+  folder next to this repo; `setup.m` clones it automatically if it's missing). Provides `vislib.*` (optics, filters, normalization, …) and
   `nat_stat_bayes.*` (the decision-variable / natural-scene-statistics toolkit).
 - **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
   **[gx2](https://github.com/abhranildas/gx2)** — installed MATLAB **add-on toolboxes** (Add-On Explorer /
