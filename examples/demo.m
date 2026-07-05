@@ -11,8 +11,8 @@
 %
 %   Re-learning the model from scratch (stages s1-s5) instead requires the
 %   calibrated natural images in vislab_data; see the README "pipeline" section.
-%   Datasets other than Brodatz/Fabric (Pertex, VisTex, McGill) need additional
-%   data — see USER_TODO.md.
+%   All six texture datasets (Pertex, Fabric, Brodatz, VisTex, McGill) are
+%   supported; each just needs its sheets present in vislab_data/textures.
 
 % --- locate the repo and set up the path ---
 this_dir  = fileparts(mfilename('fullpath'));
@@ -46,7 +46,7 @@ fprintf('(Builds GTR images and computes all pairwise similarities -- takes a fe
 try
     out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl);
 catch err
-    if contains(err.identifier, 'datasetMissing') || contains(err.identifier, 'pertexPending')
+    if contains(err.identifier, 'datasetMissing')
         error('demo:noTextureData', ...
             ['Brodatz texture sheets are not available/readable in %s.\n' ...
              'Ensure vislab_data/textures/brodatz/B*.gif are downloaded locally (see USER_TODO.md).'], ...
