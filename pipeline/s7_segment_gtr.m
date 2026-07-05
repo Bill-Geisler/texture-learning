@@ -45,7 +45,7 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
     coeff = tmp.coeff;
-    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
+    [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     dv = load_dv_handles(cfg, ecc, true);
 
     % texture sheets

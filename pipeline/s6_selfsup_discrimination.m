@@ -41,7 +41,7 @@ function out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
     coeff = tmp.coeff;
-    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
+    [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     dv = load_dv_handles(cfg, ecc, mp.load_bc);
 
     % texture sheets + trial stimuli

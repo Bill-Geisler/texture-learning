@@ -16,7 +16,7 @@ shipped originals; **the shipped `data/models/` were left untouched.**
 
 1. **Optics / OTF.** The original `aply_otf` added the image mean back **twice** (doubled
    the DC term) and did not zero spatial frequencies beyond the diffraction cutoff. The
-   corrected `vislib.otf_filter` subtracts and re-adds the mean once, zeros the
+   corrected `vislab.lib.otf_filter` subtracts and re-adds the mean once, zeros the
    out-of-cutoff band, and handles multi-channel images. Stages s1, s2, and s3 all pass
    images through the OTF, so this shifts **every** downstream artifact slightly.
 2. **Center-surround CDF (feature 14, `Ncs4`).** The original `cdfs_of_features` built

@@ -16,14 +16,14 @@ for the HBO model this builds on.
 
 ## Dependencies
 
-- **[vision-commons](https://github.com/abhranildas/vision-commons)** — the lab's shared MATLAB library (a sibling
-  folder next to this repo; `setup.m` clones it automatically if it's missing). Provides `vislib.*` (optics, filters, normalization, …) and
-  `nat_stat_bayes.*` (the decision-variable / natural-scene-statistics toolkit).
+- **[vislab](https://github.com/abhranildas/vislab)** — the lab's shared MATLAB library (a sibling
+  folder next to this repo; `setup.m` clones it automatically if it's missing). Provides `vislab.lib.*` (optics, filters, normalization, …) and
+  `vislab.nat_stat_bayes.*` (the decision-variable / natural-scene-statistics toolkit).
 - **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
   **[gx2](https://github.com/abhranildas/gx2)** — installed MATLAB **add-on toolboxes** (Add-On Explorer /
   File Exchange). `setup.m` verifies they're installed; they are *not* bundled or fetched as source.
-- **global_data** — the shared data store (~23 GB: calibrated natural images + texture sheets), a sibling
-  folder alongside this repo. Unlike vision-commons it is **too large to auto-download**, so obtain it
+- **vislab_data** — the shared data store (~23 GB: calibrated natural images + texture sheets), a sibling
+  folder alongside this repo. Unlike vislab it is **too large to auto-download**, so obtain it
   separately and place it next to the repo (`setup.m` warns if it's missing; edit `cfg.paths.data_root` if
   it's elsewhere). The shipped model + Brodatz sheets cover the demo; the full natural-image set is only
   needed to retrain (s1–s5) from scratch.
@@ -32,8 +32,8 @@ for the HBO model this builds on.
 ## Setup
 
 ```matlab
-setup            % adds this repo + vision-commons to the path; checks the toolboxes
-cfg = config;    % paths + parameters; edit cfg.paths.data_root if global_data isn't a sibling
+setup            % adds this repo + vislab to the path; checks the toolboxes
+cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab_data isn't a sibling
 ```
 
 ## The pipeline
@@ -73,7 +73,7 @@ run('examples/demo.m')      % sets up the path, runs s6 on Brodatz, prints + plo
 
 It reports the peak accuracy and shows the accuracy surface over the grouping-criterion x
 mutual-similarity-weight grid. Expect a few minutes (it builds GTR images and computes all pairwise
-patch similarities). Requires the Brodatz sheets in `global_data/textures/brodatz/`; other texture
+patch similarities). Requires the Brodatz sheets in `vislab_data/textures/brodatz/`; other texture
 datasets need additional data (see `../USER_TODO.md`).
 
 ## Repository layout
@@ -89,7 +89,7 @@ texture-learning/
 └── docs/                     papers, GLOSSARY.md, DATA_DICTIONARY.md
 ```
 
-Shared low-level code lives in `vision-commons` (not here), so it isn't duplicated across the lab's repos.
+Shared low-level code lives in `vislab` (not here), so it isn't duplicated across the lab's repos.
 
 ## Status & caveats
 
@@ -104,7 +104,7 @@ Shared low-level code lives in `vision-commons` (not here), so it isn't duplicat
 
 - `docs/GLOSSARY.md` — code names ↔ paper symbols ↔ meanings.
 - `docs/DATA_DICTIONARY.md` — contents of every `.mat` artifact and the filename codes.
-- `../vision-commons/ARCHITECTURE.md` — how this repo, vision-commons, the toolboxes, and global_data fit together.
+- `../vislab/ARCHITECTURE.md` — how this repo, vislab, the toolboxes, and vislab_data fit together.
 
 ## License & citation
 

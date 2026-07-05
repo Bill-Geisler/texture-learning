@@ -33,10 +33,10 @@ function s3_make_nearfar_pairs(cfg, ecc)
     for f = 1:numel(files)
         img = double(imread(files{f})) * 255 / maxval;
         if cfg.optics.apply
-            img = vislib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
+            img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        img = vislib.rgb2lms(img, cfg.color.rgb_to_lms);
-        img = vislib.downsample(img, ecc);
+        img = vislab.lib.rgb2lms(img, cfg.color.rgb_to_lms);
+        img = vislab.lib.downsample(img, ecc);
         [szx, szy, ~] = size(img);
         dcrit = szx / 4;                 % far-pair distance criterion
 

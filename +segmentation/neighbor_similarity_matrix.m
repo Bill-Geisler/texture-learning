@@ -53,16 +53,16 @@ function [phi, dst] = neighbor_similarity_matrix(image, n_patches, patch_size, p
             p2 = prep(j);
 
             g1 = p1(:, :, 1);  g2 = p2(:, :, 1);        % achromatic channel
-            rp = log(nat_stat_bayes.dv_power(g1, g2, b0, patch_size));
-            spot = nat_stat_bayes.dv_spot_hist(p1, p2, patch_size, bin_bounds, n_bins, feature_list);
+            rp = log(vislab.nat_stat_bayes.dv_power(g1, g2, b0, patch_size));
+            spot = vislab.nat_stat_bayes.dv_spot_hist(p1, p2, patch_size, bin_bounds, n_bins, feature_list);
             rh = dv.h(log(spot(spot_dims))');
             if cfg.dv.contrast_normalize
-                g1 = vislib.cntrst_norm(g1, c0, patch_size);
-                g2 = vislib.cntrst_norm(g2, c0, patch_size);
+                g1 = vislab.lib.cntrst_norm(g1, c0, patch_size);
+                g2 = vislab.lib.cntrst_norm(g2, c0, patch_size);
             end
-            border = nat_stat_bayes.dv_border(g1, g2, patch_size, dir, cfg.dv.sd1, cfg.dv.nsd1, false);
+            border = vislab.nat_stat_bayes.dv_border(g1, g2, patch_size, dir, cfg.dv.sd1, cfg.dv.nsd1, false);
             rb = dv.b(border(1:2)');
-            edge = nat_stat_bayes.dv_edge_hist(g1, g2, cfg.dv.edge_thresh, bin_bounds, n_bins, ...
+            edge = vislab.nat_stat_bayes.dv_edge_hist(g1, g2, cfg.dv.edge_thresh, bin_bounds, n_bins, ...
                 cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
             re = dv.e(log(edge(edge_dims))');
             rc = dv.c([rp, rh, re]');
@@ -75,7 +75,7 @@ function [phi, dst] = neighbor_similarity_matrix(image, n_patches, patch_size, p
     function p = prep(idx)
         rows = (patch_x(idx) - 1) * patch_size + (1:patch_size);
         cols = (patch_y(idx) - 1) * patch_size + (1:patch_size);
-        p = vislib.ptch_norm(image(rows, cols, :), m0, c0, norm_type, n_colr);
-        p = nat_stat_bayes.apply_color_rotation(p, color_rotation, patch_size);
+        p = vislab.lib.ptch_norm(image(rows, cols, :), m0, c0, norm_type, n_colr);
+        p = vislab.nat_stat_bayes.apply_color_rotation(p, color_rotation, patch_size);
     end
 end

@@ -5,14 +5,14 @@ function cfg = config()
 %   the task-feature definitions. Pipeline stage functions take cfg and may
 %   override stage-specific fields.
 %
-%   EDIT cfg.paths.data_root below if the shared global_data store is not a
+%   EDIT cfg.paths.data_root below if the shared vislab_data store is not a
 %   sibling of this repo.
 
     repo_root = fileparts(mfilename('fullpath'));
 
     % --- data locations ---
     cfg.paths.repo_root      = repo_root;
-    cfg.paths.data_root      = fullfile(repo_root, '..', 'global_data');   % shared lab data store
+    cfg.paths.data_root      = fullfile(repo_root, '..', 'vislab_data');   % shared lab data store
     cfg.paths.natural_images = fullfile(cfg.paths.data_root, 'CPS natural images');
     cfg.paths.textures       = fullfile(cfg.paths.data_root, 'textures');
     cfg.paths.models         = fullfile(repo_root, 'data', 'models');      % shipped trained artifacts

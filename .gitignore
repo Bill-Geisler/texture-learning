@@ -8,7 +8,7 @@ slprj/
 data/derived/
 results*.mat
 
-# Large shared data is NOT stored here; see config.m paths.data_root (global_data)
+# Large shared data is NOT stored here; see config.m paths.data_root (vislab_data)
 
 # OS / editor
 .DS_Store

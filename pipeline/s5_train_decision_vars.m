@@ -37,7 +37,7 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
     coeff = tmp.coeff;
-    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
+    [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
 
     pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
 
@@ -88,19 +88,19 @@ function R = pair_responses(patches, coeff, bin_bounds, n_bins, feature_list, nh
     R = zeros(n_pairs, 9);
     n = 0;
     for i = 1:n_pairs
-        p1 = nat_stat_bayes.apply_color_rotation(vislib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
-        p2 = nat_stat_bayes.apply_color_rotation(vislib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3), coeff, psz);
+        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
+        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3), coeff, psz);
         a1 = p1(:, :, 1);
         a2 = p2(:, :, 1);
 
-        rp   = log(nat_stat_bayes.dv_power(a1, a2, b0, psz));
-        spot = nat_stat_bayes.dv_spot_hist(p1, p2, psz, bin_bounds, n_bins, feature_list);
+        rp   = log(vislab.nat_stat_bayes.dv_power(a1, a2, b0, psz));
+        spot = vislab.nat_stat_bayes.dv_spot_hist(p1, p2, psz, bin_bounds, n_bins, feature_list);
         rh = log([spot(nh(1)), spot(nh(2)), spot(nh(3))]);
 
-        a1 = vislib.cntrst_norm(a1, c0, psz);
-        a2 = vislib.cntrst_norm(a2, c0, psz);
-        border = nat_stat_bayes.dv_border(a1, a2, psz, 2, cfg.dv.sd1, cfg.dv.nsd1, false);
-        edge   = nat_stat_bayes.dv_edge_hist(a1, a2, thresh, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
+        a1 = vislab.lib.cntrst_norm(a1, c0, psz);
+        a2 = vislab.lib.cntrst_norm(a2, c0, psz);
+        border = vislab.nat_stat_bayes.dv_border(a1, a2, psz, 2, cfg.dv.sd1, cfg.dv.nsd1, false);
+        edge   = vislab.nat_stat_bayes.dv_edge_hist(a1, a2, thresh, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
         re = log([edge(ne(1)), edge(ne(2)), edge(ne(3))]);
 
         check = [rh, re, rp];

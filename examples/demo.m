@@ -10,7 +10,7 @@
 %   resulting near-far / same-different accuracy surface (cf. the paper's Fig. 4).
 %
 %   Re-learning the model from scratch (stages s1-s5) instead requires the
-%   calibrated natural images in global_data; see the README "pipeline" section.
+%   calibrated natural images in vislab_data; see the README "pipeline" section.
 %   Datasets other than Brodatz/Fabric (Pertex, VisTex, McGill) need additional
 %   data — see USER_TODO.md.
 
@@ -35,7 +35,7 @@ fprintf('Trained model found in %s\n', cfg.paths.models);
 
 % --- 2. run the self-supervised discrimination stage on Brodatz ---
 method = 'bc';    % per-image retraining of the border+content bound (paper: NCB)
-itype  = 3;       % 3 = Brodatz (data present in global_data/textures/brodatz)
+itype  = 3;       % 3 = Brodatz (data present in vislab_data/textures/brodatz)
 ecc    = 1;       % foveal
 ntrl   = 2;       % GTR images to average over (small, for a quick demo)
 
@@ -47,7 +47,7 @@ catch err
     if contains(err.identifier, 'datasetMissing') || contains(err.identifier, 'pertexPending')
         error('demo:noTextureData', ...
             ['Brodatz texture sheets are not available/readable in %s.\n' ...
-             'Ensure global_data/textures/brodatz/B*.gif are downloaded locally (see USER_TODO.md).'], ...
+             'Ensure vislab_data/textures/brodatz/B*.gif are downloaded locally (see USER_TODO.md).'], ...
             cfg.paths.textures);
     else
         rethrow(err);

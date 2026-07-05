@@ -22,7 +22,7 @@ segmentation paper (`segmentation-paper.pdf`).
 The pipeline uses spot dims **[1 13 14]** and edge dims **[5 9 10]** in the content DV.
 
 ## Decision variables (paper log-likelihood ratios ln L → code)
-| Code (vision-commons `nat_stat_bayes.*`) | Was | Paper | Meaning |
+| Code (vislab `vislab.nat_stat_bayes.*`) | Was | Paper | Meaning |
 |---|---|---|---|
 | `dv_power` | `Rp` | ln L_p | power-spectrum DV (complex-cell-like) |
 | `dv_spot_hist` | `Rh` | ln L_h | spot/colour + center-surround histogram DV |
@@ -56,12 +56,12 @@ The pipeline uses spot dims **[1 13 14]** and edge dims **[5 9 10]** in the cont
 | `b0` | β, weak Fourier-power suppression constant |
 
 ## Function renames (old flat name → new)
-`otf`→`vislib.watson_otf`, `aply_otf`→`vislib.otf_filter`, `dsmp`→`vislib.downsample`,
-`adobe_compress/expand`→`vislib.gamma_compress/expand`, `mk_dg_hv`→`vislib.steerable_kernels`,
-`mk_2dg_sf`→`vislib.gauss_deriv2_kernels`, `imgrad`→`vislib.steerable_grad_response`,
-`imgrad2`→`vislib.grad2_response`, `cen_sur`→`vislib.center_surround`, `rot`→`nat_stat_bayes.apply_color_rotation`,
-`mk_bins`→`nat_stat_bayes.make_bins`, `find_bnd`→`nat_stat_bayes.find_bin_bound`,
-`mk_bb`→`nat_stat_bayes.load_bin_bounds`, `Rcc`→`nat_stat_bayes.xcorr_patches`;
+`otf`→`vislab.lib.watson_otf`, `aply_otf`→`vislab.lib.otf_filter`, `dsmp`→`vislab.lib.downsample`,
+`adobe_compress/expand`→`vislab.lib.gamma_compress/expand`, `mk_dg_hv`→`vislab.lib.steerable_kernels`,
+`mk_2dg_sf`→`vislab.lib.gauss_deriv2_kernels`, `imgrad`→`vislab.lib.steerable_grad_response`,
+`imgrad2`→`vislab.lib.grad2_response`, `cen_sur`→`vislab.lib.center_surround`, `rot`→`vislab.nat_stat_bayes.apply_color_rotation`,
+`mk_bins`→`vislab.nat_stat_bayes.make_bins`, `find_bnd`→`vislab.nat_stat_bayes.find_bin_bound`,
+`mk_bb`→`vislab.nat_stat_bayes.load_bin_bounds`, `Rcc`→`vislab.nat_stat_bayes.xcorr_patches`;
 `mk_phi`→`segmentation.content_similarity_matrix`, `mk_groups`→`segmentation.group_patches`,
 `iso_patch`→`segmentation.assign_isolated_patches`, `merge_groups`→`segmentation.merge_similar_regions`,
 `reg_count`→`segmentation.count_correct_regions`; `mk_texs`→`gtr.sample_texture_ids`,

@@ -16,7 +16,7 @@ function s2_learn_feature_cdfs(cfg)
 %
 %   Fixes vs original: the large center-surround CDF (Ncs4) is now computed from
 %   its own data (csl4), not csl2 (a copy/paste bug) -- behaviour-changing for
-%   feature 14; regenerate downstream artifacts. Uses corrected vislib.otf_filter.
+%   feature 14; regenerate downstream artifacts. Uses corrected vislab.lib.otf_filter.
 %   Diagnostic plots omitted.
 
     psz       = cfg.patch.size;
@@ -48,27 +48,27 @@ function s2_learn_feature_cdfs(cfg)
     for f = 1:numel(files)
         img = double(imread(files{f})) * 255 / maxval;
         if cfg.optics.apply
-            img = vislib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
+            img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        img_lms = vislib.rgb2lms(img, cfg.color.rgb_to_lms);
+        img_lms = vislab.lib.rgb2lms(img, cfg.color.rgb_to_lms);
         [n_rows, n_cols, ~] = size(img_lms);
 
         for k = 1:nsmp
             x = randi(n_rows - psz);
             y = randi(n_cols - psz);
             patch = img_lms(x:x+psz-1, y:y+psz-1, :);
-            patch = vislib.ptch_norm(patch, m0, c0, norm_type, n_colr);
+            patch = vislab.lib.ptch_norm(patch, m0, c0, norm_type, n_colr);
 
             % accumulate LMS pixel values (for the colour-channel CDFs after rotation)
             lms(n_lms+1 : n_lms+psz^2, :) = reshape(patch, [], 3);
             n_lms = n_lms + psz^2;
 
             % achromatic (A) channel in ABR space, contrast-normalized
-            abr = nat_stat_bayes.apply_color_rotation(patch, coeff, psz);
-            a = vislib.cntrst_norm(abr(:, :, 1), c0, psz);
+            abr = vislab.nat_stat_bayes.apply_color_rotation(patch, coeff, psz);
+            a = vislab.lib.cntrst_norm(abr(:, :, 1), c0, psz);
 
             % 1st-derivative steerable responses (keep above-threshold)
-            [gm, go] = vislib.steerable_grad_response(a, sd1, nsd1);
+            [gm, go] = vislab.lib.steerable_grad_response(a, sd1, nsd1);
             keep = gm > thresh;
             vals = gm(keep); ori = go(keep); m = numel(vals);
             g1m(n_g1+1:n_g1+m)  = vals;
@@ -77,7 +77,7 @@ function s2_learn_feature_cdfs(cfg)
             n_g1 = n_g1 + m;
 
             % 2nd-derivative steerable responses (all pixels)
-            [gm2, go2] = vislib.grad2_response(a, sd2, nsd2);
+            [gm2, go2] = vislab.lib.grad2_response(a, sd2, nsd2);
             m2 = numel(gm2);
             g2m(n_g2+1:n_g2+m2)  = gm2(:);
             g2o(n_g2+1:n_g2+m2)  = go2(:);
@@ -85,9 +85,9 @@ function s2_learn_feature_cdfs(cfg)
             n_g2 = n_g2 + m2;
 
             % center-surround responses (ratio, small linear, large linear)
-            cs = vislib.center_surround(a, swid, 1); nc = numel(cs); cs1v(n_cs1+1:n_cs1+nc) = cs(:); n_cs1 = n_cs1 + nc;
-            cs = vislib.center_surround(a, swid, 2); nc = numel(cs); cs2v(n_cs2+1:n_cs2+nc) = cs(:); n_cs2 = n_cs2 + nc;
-            cs = vislib.center_surround(a, swid, 4); nc = numel(cs); cs4v(n_cs4+1:n_cs4+nc) = cs(:); n_cs4 = n_cs4 + nc;
+            cs = vislab.lib.center_surround(a, swid, 1); nc = numel(cs); cs1v(n_cs1+1:n_cs1+nc) = cs(:); n_cs1 = n_cs1 + nc;
+            cs = vislab.lib.center_surround(a, swid, 2); nc = numel(cs); cs2v(n_cs2+1:n_cs2+nc) = cs(:); n_cs2 = n_cs2 + nc;
+            cs = vislab.lib.center_surround(a, swid, 4); nc = numel(cs); cs4v(n_cs4+1:n_cs4+nc) = cs(:); n_cs4 = n_cs4 + nc;
         end
     end
 

@@ -11,7 +11,7 @@ function coeff = s1_learn_color_transform(cfg)
 %   Run `setup` first. Requires natural images in cfg.paths.natural_images and
 %   the Statistics Toolbox (pca).
 %
-%   NOTE: uses the corrected vislib.otf_filter, so the saved matrix differs
+%   NOTE: uses the corrected vislab.lib.otf_filter, so the saved matrix differs
 %   slightly from the preprint's PCA_matrix_3_OTF.mat (see the reorganization
 %   plan / CHANGELOG). Diagnostic histograms from the original are omitted.
 %
@@ -33,15 +33,15 @@ function coeff = s1_learn_color_transform(cfg)
     for f = 1:numel(files)
         img = double(imread(files{f})) * 255 / maxval;      % scale 14-bit -> 0..255
         if cfg.optics.apply
-            img = vislib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
+            img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        img_lms = vislib.rgb2lms(img, cfg.color.rgb_to_lms);
+        img_lms = vislab.lib.rgb2lms(img, cfg.color.rgb_to_lms);
         [n_rows, n_cols, ~] = size(img_lms);
         for s = 1:nsmp
             x = randi(n_rows - psz);
             y = randi(n_cols - psz);
             patch = img_lms(x:x+psz-1, y:y+psz-1, :);
-            patch = vislib.ptch_norm(patch, m0, c0, norm_type, n_colr);
+            patch = vislab.lib.ptch_norm(patch, m0, c0, norm_type, n_colr);
             lms_pixels(n+1 : n+psz^2, :) = reshape(patch, [], 3);
             n = n + psz^2;
         end

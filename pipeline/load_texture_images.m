@@ -35,11 +35,11 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
         case 1
             error('load_texture_images:pertexPending', ...
                 ['Pertex (itype 1) loading is unresolved: the code expects P<n>.mat (grayscale dimg) ', ...
-                 'but global_data/textures/pertex has PNGs. See QUESTIONS_FOR_GEISLER.md (D1).']);
+                 'but vislab_data/textures/pertex has PNGs. See QUESTIONS_FOR_GEISLER.md (D1).']);
         case {5, 6}
             name = 'VisTex'; if itype == 6, name = 'McGill'; end
             error('load_texture_images:datasetMissing', ...
-                ['%s (itype %d) textures are not in global_data/textures. Add them per USER_TODO.md.'], name, itype);
+                ['%s (itype %d) textures are not in vislab_data/textures. Add them per USER_TODO.md.'], name, itype);
         otherwise
             error('load_texture_images:badItype', 'itype must be 1-6, got %g.', itype);
     end
@@ -55,13 +55,13 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
             cimg = raw;
         end
         if gamma(k)
-            cimg = vislib.gamma_expand(cimg);            % linearize gamma-compressed sheets (Fabric)
+            cimg = vislab.lib.gamma_expand(cimg);            % linearize gamma-compressed sheets (Fabric)
         end
         if cfg.optics.apply
-            cimg = vislib.otf_filter(cimg, cfg.optics.ppd, cfg.optics.pupil_diameter, cfg.optics.wavelength);
+            cimg = vislab.lib.otf_filter(cimg, cfg.optics.ppd, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        cimg = vislib.rgb2lms(cimg, cfg.color.rgb_to_lms);
-        cimg = vislib.downsample(cimg, ecc);
+        cimg = vislab.lib.rgb2lms(cimg, cfg.color.rgb_to_lms);
+        cimg = vislab.lib.downsample(cimg, ecc);
         imgr(:, :, k) = cimg(:, :, 1);
         imgg(:, :, k) = cimg(:, :, 2);
         imgb(:, :, k) = cimg(:, :, 3);

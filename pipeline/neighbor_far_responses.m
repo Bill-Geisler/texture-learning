@@ -12,7 +12,7 @@ function R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coe
 %     pimg         - GTR image in ABR-ready LMS space (from make_gtr_image).
 %     rho          - mutual-similarity matrix (segmentation.mutual_similarity).
 %     map          - szp x szp region-label map for this trial.
-%     bin_bounds,n_bins - histogram bounds (nat_stat_bayes.load_bin_bounds).
+%     bin_bounds,n_bins - histogram bounds (vislab.nat_stat_bayes.load_bin_bounds).
 %     coeff        - LMS->ABR rotation.
 %     dv           - struct of trained DV function handles: dv.h, dv.e, dv.c, dv.b (from quad2fun).
 %     feature_list - indicator vector of DV features to compute.
@@ -75,20 +75,20 @@ function R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coe
     % ---- nested helpers (share cfg/dv/bounds/coeff via the parent workspace) ----
     function p = prep(r, c)
         x = (r-1)*psz + 1; y = (c-1)*psz + 1;
-        p = vislib.ptch_norm(pimg(x:x+psz-1, y:y+psz-1, :), m0, c0, 3, 3);
-        p = nat_stat_bayes.apply_color_rotation(p, coeff, psz);
+        p = vislab.lib.ptch_norm(pimg(x:x+psz-1, y:y+psz-1, :), m0, c0, 3, 3);
+        p = vislab.nat_stat_bayes.apply_color_rotation(p, coeff, psz);
     end
 
     function [rc, rb] = pair_cb(pa, pb, dir)
         a1 = pa(:, :, 1);  a2 = pb(:, :, 1);
-        rp = log(nat_stat_bayes.dv_power(a1, a2, b0, psz));
-        spot = nat_stat_bayes.dv_spot_hist(pa, pb, psz, bin_bounds, n_bins, feature_list);
+        rp = log(vislab.nat_stat_bayes.dv_power(a1, a2, b0, psz));
+        spot = vislab.nat_stat_bayes.dv_spot_hist(pa, pb, psz, bin_bounds, n_bins, feature_list);
         rh = dv.h(log([spot(nh(1)), spot(nh(2)), spot(nh(3))])');
-        a1 = vislib.cntrst_norm(a1, c0, psz);      % fresh copy each pair (bug fix)
-        a2 = vislib.cntrst_norm(a2, c0, psz);
-        edge = nat_stat_bayes.dv_edge_hist(a1, a2, thr, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
+        a1 = vislab.lib.cntrst_norm(a1, c0, psz);      % fresh copy each pair (bug fix)
+        a2 = vislab.lib.cntrst_norm(a2, c0, psz);
+        edge = vislab.nat_stat_bayes.dv_edge_hist(a1, a2, thr, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
         re = dv.e(log([edge(ne(1)), edge(ne(2)), edge(ne(3))])');
-        border = nat_stat_bayes.dv_border(a1, a2, psz, dir, cfg.dv.sd1, cfg.dv.nsd1, false);
+        border = vislab.nat_stat_bayes.dv_border(a1, a2, psz, dir, cfg.dv.sd1, cfg.dv.nsd1, false);
         rb = dv.b(border(1:2)');
         rc = dv.c([rp, rh, re]');
     end

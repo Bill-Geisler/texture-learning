@@ -42,7 +42,7 @@ function s4_optimize_bins(cfg, dim, ecc)
     n_edges = numel(cdf_p);
     n_bins = 2;
     grown = n_bins;
-    [bounds, indices] = nat_stat_bayes.make_bins(cdf_x, cdf_p, n_bins);
+    [bounds, indices] = vislab.nat_stat_bayes.make_bins(cdf_x, cdf_p, n_bins);
     bounds(1) = cdf_x(1);
     bounds(n_bins + 1) = cdf_x(n_edges);
 
@@ -55,7 +55,7 @@ function s4_optimize_bins(cfg, dim, ecc)
         offset = 0;
         for i = 1:n_bins
             if frozen(i) == 0
-                [cand_bounds, cand_indices] = nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, cdf_x, cdf_p);
+                [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, cdf_x, cdf_p);
                 err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg, coeff);
                 if (prev_err - err) / prev_err > err_crit
                     bounds = cand_bounds;
@@ -171,14 +171,14 @@ function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_
     vals = zeros(n_pairs, 1);
     n = 0;
     for i = 1:n_pairs
-        p1 = nat_stat_bayes.apply_color_rotation(vislib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
-        p2 = nat_stat_bayes.apply_color_rotation(vislib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3), coeff, psz);
+        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
+        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3), coeff, psz);
         if is_edge
-            a1 = vislib.cntrst_norm(p1(:, :, 1), c0, psz);
-            a2 = vislib.cntrst_norm(p2(:, :, 1), c0, psz);
-            dv = nat_stat_bayes.dv_edge_hist(a1, a2, 0, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
+            a1 = vislab.lib.cntrst_norm(p1(:, :, 1), c0, psz);
+            a2 = vislab.lib.cntrst_norm(p2(:, :, 1), c0, psz);
+            dv = vislab.nat_stat_bayes.dv_edge_hist(a1, a2, 0, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
         else
-            dv = nat_stat_bayes.dv_spot_hist(p1, p2, psz, bin_bounds, n_bins, feature_list);
+            dv = vislab.nat_stat_bayes.dv_spot_hist(p1, p2, psz, bin_bounds, n_bins, feature_list);
         end
         r = log(dv(dim));
         if r >= -25                       % drop -inf / extreme outliers

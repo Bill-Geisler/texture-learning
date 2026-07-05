@@ -8,7 +8,7 @@ function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, 
 %   For every pair of patches, computes the content decision variable (paper:
 %   ln L_c) by combining the power, spot/colour-histogram, and edge-histogram
 %   DVs via the trained content decision function. Returns the symmetric
-%   similarity matrix phi (phi_ij). (Was mk_phi.m; now uses vision-commons and
+%   similarity matrix phi (phi_ij). (Was mk_phi.m; now uses vislab and
 %   takes preloaded bin bounds + a cfg struct instead of hardcoded constants.)
 %
 %   Inputs
@@ -17,7 +17,7 @@ function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, 
 %     patch_size     - patch side length in pixels.
 %     patch_x,patch_y- patch-index -> grid-coordinate maps.
 %     color_rotation - 3x3 LMS->ABR rotation matrix (coeff).
-%     bin_bounds,n_bins - histogram bin bounds/counts (nat_stat_bayes.load_bin_bounds).
+%     bin_bounds,n_bins - histogram bin bounds/counts (vislab.nat_stat_bayes.load_bin_bounds).
 %     feature_list   - indicator vector of which DV features to compute.
 %     dv_spot_fun    - trained spot DV function handle (quad2fun of dbndh).
 %     dv_edge_fun    - trained edge DV function handle (quad2fun of dbnde).
@@ -45,18 +45,18 @@ function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, 
             gray2 = p2(:, :, 1);
 
             % power DV
-            rp = log(nat_stat_bayes.dv_power(gray1, gray2, cfg.dv.power_suppress, patch_size));
+            rp = log(vislab.nat_stat_bayes.dv_power(gray1, gray2, cfg.dv.power_suppress, patch_size));
 
             % spot / colour-histogram DV
-            spot = nat_stat_bayes.dv_spot_hist(p1, p2, patch_size, bin_bounds, n_bins, feature_list);
+            spot = vislab.nat_stat_bayes.dv_spot_hist(p1, p2, patch_size, bin_bounds, n_bins, feature_list);
             rh = dv_spot_fun(log(spot(spot_dims))');
 
             % edge-histogram DV (optionally contrast-normalized first)
             if cfg.dv.contrast_normalize
-                gray1 = vislib.cntrst_norm(gray1, c0, patch_size);
-                gray2 = vislib.cntrst_norm(gray2, c0, patch_size);
+                gray1 = vislab.lib.cntrst_norm(gray1, c0, patch_size);
+                gray2 = vislab.lib.cntrst_norm(gray2, c0, patch_size);
             end
-            edge = nat_stat_bayes.dv_edge_hist(gray1, gray2, cfg.dv.edge_thresh, bin_bounds, n_bins, ...
+            edge = vislab.nat_stat_bayes.dv_edge_hist(gray1, gray2, cfg.dv.edge_thresh, bin_bounds, n_bins, ...
                 cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
             re = dv_edge_fun(log(edge(edge_dims))');
 
@@ -73,6 +73,6 @@ function patch = prep_patch(image, gx, gy, patch_size, m0, c0, norm_type, n_colr
     rows = (gx - 1) * patch_size + (1:patch_size);
     cols = (gy - 1) * patch_size + (1:patch_size);
     patch = image(rows, cols, :);
-    patch = vislib.ptch_norm(patch, m0, c0, norm_type, n_colr);
-    patch = nat_stat_bayes.apply_color_rotation(patch, color_rotation, patch_size);
+    patch = vislab.lib.ptch_norm(patch, m0, c0, norm_type, n_colr);
+    patch = vislab.nat_stat_bayes.apply_color_rotation(patch, color_rotation, patch_size);
 end

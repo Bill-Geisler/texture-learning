@@ -2,7 +2,7 @@
 
 Contents of every `.mat` artifact and the filename codes. Shipped artifacts live in `data/models/`;
 generated data in `data/derived/` (git-ignored). Large inputs (natural images, texture sheets) live in
-the external `global_data/` store (see `config.m`).
+the external `vislab_data/` store (see `config.m`).
 
 ## Filename codes
 
@@ -59,6 +59,6 @@ Segmentation results per texture type (P=Pertex, F=Fabric, B=Brodatz, BF=Brodatz
 M=McGill): region counts and accuracy surfaces over the grouping-criterion sweeps. Schema to be
 finalized when stage 7 is implemented (blocked on the texture-dataset layout — see `../../USER_TODO.md`).
 
-## External inputs (in `global_data/`, not in this repo)
+## External inputs (in `vislab_data/`, not in this repo)
 - `CPS natural images/Set{9,10,12}_16_*.png` — 16-bit calibrated natural images (stages 1–3).
 - `textures/{brodatz,fabric,pertex,…}/` — texture sheets for GTR images (stages 6–7).
