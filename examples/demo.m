@@ -36,13 +36,13 @@ fprintf('Trained model found in %s\n', cfg.paths.models);
 % --- 2. run the self-supervised discrimination stage on Brodatz ---
 method = 'bc';    % per-image retraining of the border+content bound (paper: NCB)
 itype  = 3;       % 3 = Brodatz (data present in global_data/textures/brodatz)
-lev    = 1;       % foveal
+ecc    = 1;       % foveal
 ntrl   = 2;       % GTR images to average over (small, for a quick demo)
 
 fprintf('\nRunning s6 discrimination: method=%s, Brodatz, %d trial(s).\n', method, ntrl);
 fprintf('(Builds GTR images and computes all pairwise similarities -- takes a few minutes.)\n');
 try
-    out = s6_selfsup_discrimination(cfg, method, itype, lev, ntrl);
+    out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl);
 catch err
     if contains(err.identifier, 'datasetMissing') || contains(err.identifier, 'pertexPending')
         error('demo:noTextureData', ...

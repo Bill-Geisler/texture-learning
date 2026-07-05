@@ -6,8 +6,8 @@ The trained artifacts in `data/models/` were produced by the **original** code a
 the preprint. During the reorganization, several genuine bugs in the original were fixed
 (listed below). Those fixes are **behaviour-changing**: rerunning the pipeline with the
 corrected code produces artifacts that differ from the shipped ones. This file records the
-fixes and the differences measured by a **full s1–s5 verification run** (eccentricity
-level 1, 391 natural images, ~92 min).
+fixes and the differences measured by a **full s1–s5 verification run** (eccentricity 1,
+391 natural images, ~92 min).
 
 The verification regenerated everything into a temporary folder and compared it to the
 shipped originals; **the shipped `data/models/` were left untouched.**
@@ -30,7 +30,7 @@ Also fixed but **not** affecting this pipeline's artifacts: the `Re` bar-count m
 feature 8, which the proximity pipeline (features 5, 7, 9, 10) does not use; the `Rb`
 off-border `/` (mrdivide) was **preserved** pending Geisler's confirmation.
 
-### Measured differences — regenerated vs. shipped (level 1)
+### Measured differences — regenerated vs. shipped (eccentricity 1)
 
 `max|d|` = maximum absolute element-wise difference between the regenerated and shipped array.
 
@@ -61,5 +61,5 @@ several features (so everything trained on top of them changes structure):
   preprint numbers), or *keep* the shipped artifacts (paper-matching) and treat the
   corrected pipeline as the going-forward version. This verification changed nothing either
   way — the shipped files are as they were.
-- Only **level 1** (fovea) was regenerated here; a full replacement would also regenerate
-  levels 2/4/8.
+- Only **eccentricity 1** (fovea) was regenerated here; a full replacement would also regenerate
+  eccentricities 2/4/8.

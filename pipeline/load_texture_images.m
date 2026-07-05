@@ -1,9 +1,9 @@
-function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, lev)
+function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
 % LOAD_TEXTURE_IMAGES  Load and preprocess the texture-source sheets for a GTR type.
-%   [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, lev)
+%   [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
 %
 %   Loads the texture sheets for the requested itype, applies eye optics, converts
-%   to LMS, and downsamples to eccentricity level `lev`. Returns the three LMS
+%   to LMS, and downsamples to eccentricity `ecc`. Returns the three LMS
 %   channel stacks (each sz x sz x nimg). Shared by pipeline stages s6 and s7.
 %
 %   itype: 1 Pertex | 2 Fabric | 3 Brodatz | 4 Brodatz+Fabric | 5 VisTex | 6 McGill.
@@ -12,7 +12,7 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, lev)
 %   supported: Fabric (fabric/FC*.png), Brodatz (brodatz/B*.gif), and their union.
 %   Pertex/VisTex/McGill are not yet wired up (see USER_TODO.md / QUESTIONS_FOR_GEISLER.md).
 
-    sz = cfg.patch.image_size / lev;
+    sz = cfg.patch.image_size / ecc;
     tex = cfg.paths.textures;
 
     switch itype
@@ -61,7 +61,7 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, lev)
             cimg = vislib.otf_filter(cimg, cfg.optics.ppd, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
         cimg = vislib.rgb2lms(cimg, cfg.color.rgb_to_lms);
-        cimg = vislib.downsample(cimg, lev);
+        cimg = vislib.downsample(cimg, ecc);
         imgr(:, :, k) = cimg(:, :, 1);
         imgg(:, :, k) = cimg(:, :, 2);
         imgb(:, :, k) = cimg(:, :, 3);

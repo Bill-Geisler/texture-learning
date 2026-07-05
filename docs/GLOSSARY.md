@@ -44,10 +44,10 @@ The pipeline uses spot dims **[1 13 14]** and edge dims **[5 9 10]** in the cont
 | `copt` | — | per-image optimal criterion shift learned self-supervised |
 | `p_s`, `p_d` | p_s, p_d | prob. same for near pairs / prob. different for far pairs (mixture params) |
 
-## Levels, datasets, methods
+## Eccentricities, datasets, methods
 | Code | Meaning |
 |---|---|
-| `lev` | eccentricity downsample level 1/2/4/8 (≈ fovea, 1.65°, 4.95°, 11.55°) |
+| `ecc` | eccentricity downsample factor 1/2/4/8 (≈ fovea, 1.65°, 4.95°, 11.55°) |
 | `btype` | histogram-bound type: **5** = natural images, **4** = Brodatz/Fabric |
 | `itype` | texture dataset: 1 Pertex · 2 Fabric · 3 Brodatz · 4 Brodatz+Fabric · 5 VisTex · 6 McGill |
 | `NO` (in `dbnd*NO`) | **N**atural-image-trained + **O**TF applied (vs `BF` = Brodatz/Fabric-trained) |

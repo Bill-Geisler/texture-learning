@@ -1,6 +1,6 @@
-function out = s7_segment_gtr(cfg, method, itype, lev, n_images)
+function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
 % S7_SEGMENT_GTR  Self-supervised segmentation of grown-texture-region images.
-%   out = s7_segment_gtr(cfg, method, itype, lev, n_images)
+%   out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
 %
 %   Pipeline stage 7 (merges tex_grp_s_p_ms_SS_{ncm,ncbm}.m). For each GTR image:
 %     1. Learn the per-image grouping criterion gcopt and mutual-similarity weight
@@ -17,25 +17,25 @@ function out = s7_segment_gtr(cfg, method, itype, lev, n_images)
 %     'nc'  - content-based: shift the content DV (was ..._ncm; self_sup 'c_shft').
 %     'ncb' - border+content-based: trained bc DV, no shift (was ..._ncbm; 'bc_noshift').
 %   itype:    texture dataset (default 3 = Brodatz).
-%   lev:      eccentricity level (default 1).
+%   ecc:      eccentricity (default 1).
 %   n_images: number of GTR images to average over (default 120 = 10 seeds x 12).
 %
 %   Run `setup` first; requires stages 2,4,5 artifacts + IntClassNorm.
 %   NOTE: the original hardcoded the neighbour distance dmin=64 px regardless of
-%   level; here it is the actual patch size (= 64/lev), which matters only for
-%   lev>1 (flagged for Geisler). pd=4 and levb=1 preserved from the originals.
+%   eccentricity; here it is the actual patch size (= 64/ecc), which matters only
+%   for ecc>1 (flagged for Geisler). pd=4 and eccb=1 preserved from the originals.
 
     if nargin < 2 || isempty(method),   method = 'ncb'; end
     if nargin < 3 || isempty(itype),    itype = 3; end
-    if nargin < 4 || isempty(lev),      lev = 1; end
+    if nargin < 4 || isempty(ecc),      ecc = 1; end
     if nargin < 5 || isempty(n_images), n_images = 120; end
     mustBeMember(method, {'nc', 'ncb'});
     ss_method = struct('nc', 'c_shft', 'ncb', 'bc_noshift').(method);   % self_sup_decision token
 
-    levb = 1;                                   % bin-bounds level (see note)
+    eccb = 1;                                   % bin-bounds eccentricity (see note)
     cfg.optics.pupil_diameter = 4;              % pupil for the OTF (both originals)
     szp    = cfg.gtr.szp;
-    psz    = cfg.patch.size / lev;              % patch size in pixels = neighbour distance
+    psz    = cfg.patch.size / ecc;              % patch size in pixels = neighbour distance
     ntexr  = cfg.gtr.n_regions;
 
     feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
@@ -45,11 +45,11 @@ function out = s7_segment_gtr(cfg, method, itype, lev, n_images)
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
     coeff = tmp.coeff;
-    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, levb, double(cfg.optics.apply));
-    dv = load_dv_handles(cfg, lev, true);
+    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
+    dv = load_dv_handles(cfg, ecc, true);
 
     % texture sheets
-    [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, lev);
+    [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc);
 
     % discrimination grid (to pick gcopt/wmopt) and segmentation sweeps
     gc_vec  = 0 : 0.8 : 8;        % grouping criterion
@@ -121,11 +121,11 @@ function out = s7_segment_gtr(cfg, method, itype, lev, n_images)
     out.nregs_sd   = std(nregs, 1, 3) / sqrt(ngtr);  % std error of correct regions
     out.nregs5_sd  = std(exact, 1, 3) / sqrt(ngtr);  % std error of fully-correct fraction
     out.mc = mc_vec;  out.dgc = dgc_vec;
-    out.method = method;  out.itype = itype;  out.lev = lev;  out.n_images = ngtr;
+    out.method = method;  out.itype = itype;  out.ecc = ecc;  out.n_images = ngtr;
 
     [best, idx] = max(out.nregs5_ave, [], 'all', 'linear');
     [ki, li] = ind2sub(size(out.nregs5_ave), idx);
-    fprintf(['s7 (%s, itype %d, lev %d, %d imgs): peak fully-correct = %.1f%% ', ...
+    fprintf(['s7 (%s, itype %d, ecc %d, %d imgs): peak fully-correct = %.1f%% ', ...
              'at merge=%.2f, dgc=%.2f (mean correct regions there = %.2f)\n'], ...
-             method, itype, lev, ngtr, 100*best, mc_vec(ki), dgc_vec(li), out.nregs_ave(ki, li));
+             method, itype, ecc, ngtr, 100*best, mc_vec(ki), dgc_vec(li), out.nregs_ave(ki, li));
 end

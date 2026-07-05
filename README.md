@@ -45,13 +45,13 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 |---|---|---|
 | 1 | `s1_learn_color_transform(cfg)` | `PCA_matrix_3_OTF.mat` — LMS→ABR colour rotation |
 | 2 | `s2_learn_feature_cdfs(cfg)` | `cdfs_abr_mo13_mo23_cs33_otf.mat` — task-independent feature CDFs |
-| 3 | `s3_make_nearfar_pairs(cfg, lev)` | `patch_pairs_<lev>.mat` — near/far training pairs |
-| 4 | `s4_optimize_bins(cfg, dim, lev)` | `AHEO<btype><dim><lev>.mat` — adaptive histogram bins |
-| 5 | `s5_train_decision_vars(cfg, lev)` | `dbnd{h,e,c,b,bc}NO<lev>.mat` — trained decision-variable bounds |
-| 6 | `s6_selfsup_discrimination(cfg, method, itype, lev, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
-| 7 | `s7_segment_gtr(cfg, method, itype, lev, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
+| 3 | `s3_make_nearfar_pairs(cfg, ecc)` | `patch_pairs_<ecc>.mat` — near/far training pairs |
+| 4 | `s4_optimize_bins(cfg, dim, ecc)` | `AHEO<btype><dim><ecc>.mat` — adaptive histogram bins |
+| 5 | `s5_train_decision_vars(cfg, ecc)` | `dbnd{h,e,c,b,bc}NO<ecc>.mat` — trained decision-variable bounds |
+| 6 | `s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
+| 7 | `s7_segment_gtr(cfg, method, itype, ecc, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
-Example (regenerate the eccentricity level 1 (=fovea) model):
+Example (regenerate the eccentricity 1 (=fovea) model):
 ```matlab
 setup; cfg = config;
 s1_learn_color_transform(cfg);

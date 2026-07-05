@@ -1,15 +1,15 @@
-function s3_make_nearfar_pairs(cfg, lev)
+function s3_make_nearfar_pairs(cfg, ecc)
 % S3_MAKE_NEARFAR_PAIRS  Build near/far patch-pair training data from natural images.
-%   s3_make_nearfar_pairs(cfg, lev)
+%   s3_make_nearfar_pairs(cfg, ecc)
 %
 %   Pipeline stage 3 (was nat_near_far_patches.m). The proximity proxy: for each
-%   natural image (optically filtered, LMS, downsampled to eccentricity level
-%   lev) sample reference patches and form, per reference, two NEAR pairs (the
+%   natural image (optically filtered, LMS, downsampled to eccentricity
+%   ecc) sample reference patches and form, per reference, two NEAR pairs (the
 %   reference with its right and lower neighbours) and two FAR pairs (the
 %   reference with patches sampled beyond a distance criterion). Saves the
-%   combined pairs to data/derived/patch_pairs_<lev>.mat.
+%   combined pairs to data/derived/patch_pairs_<ecc>.mat.
 %
-%   Run `setup` first. lev is the downsample level (1, 2, 4, 8).
+%   Run `setup` first. ecc is the downsample factor (1, 2, 4, 8).
 %
 %   Changes vs original:
 %     * one combined output file (ptchn/ptchf/pcnt) instead of three per-set
@@ -18,7 +18,7 @@ function s3_make_nearfar_pairs(cfg, lev)
 %     * uses cfg.optics.ppd_natural (64) for the OTF, matching stages 1-2; the
 %       original used 60 here (likely a stray display value) -- flagged for Geisler.
 
-    psz  = cfg.patch.size / lev;         % patch size at this level
+    psz  = cfg.patch.size / ecc;         % patch size at this eccentricity
     psz2 = 2 * psz;
     nsmp = 10;                           % reference patches per image
     n_colr = 3;
@@ -36,7 +36,7 @@ function s3_make_nearfar_pairs(cfg, lev)
             img = vislib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
         img = vislib.rgb2lms(img, cfg.color.rgb_to_lms);
-        img = vislib.downsample(img, lev);
+        img = vislib.downsample(img, ecc);
         [szx, szy, ~] = size(img);
         dcrit = szx / 4;                 % far-pair distance criterion
 
@@ -66,9 +66,9 @@ function s3_make_nearfar_pairs(cfg, lev)
     ptchf = ptchf(:, :, :, 1:pcnt);
 
     if ~isfolder(cfg.paths.derived), mkdir(cfg.paths.derived); end
-    out_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', lev));
+    out_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
     save(out_path, 'ptchn', 'ptchf', 'pcnt');
-    fprintf('s3: saved %d near/far patch pairs (lev %d) to %s\n', pcnt, lev, out_path);
+    fprintf('s3: saved %d near/far patch pairs (ecc %d) to %s\n', pcnt, ecc, out_path);
 end
 
 function [xf, yf] = sample_far(szx, szy, psz2, x, y, dcrit)

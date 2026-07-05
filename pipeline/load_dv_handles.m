@@ -1,9 +1,9 @@
-function dv = load_dv_handles(cfg, lev, load_bc)
-% LOAD_DV_HANDLES  Load trained decision-variable function handles for a level.
-%   dv = load_dv_handles(cfg, lev, load_bc)
+function dv = load_dv_handles(cfg, ecc, load_bc)
+% LOAD_DV_HANDLES  Load trained decision-variable function handles for an eccentricity.
+%   dv = load_dv_handles(cfg, ecc, load_bc)
 %
 %   Builds function handles for the trained decision variables from the
-%   dbnd*NO<lev>.mat artifacts (via quad2fun): dv.h (spot), dv.e (edge),
+%   dbnd*NO<ecc>.mat artifacts (via quad2fun): dv.h (spot), dv.e (edge),
 %   dv.c (content), dv.b (border). If load_bc is true, also dv.bc (border+
 %   content). Shared by pipeline stages s6 and s7.
 %
@@ -11,7 +11,7 @@ function dv = load_dv_handles(cfg, lev, load_bc)
 %   cfg.paths.models. Run `setup` first.
 
     if nargin < 3 || isempty(load_bc), load_bc = false; end
-    tag = num2str(lev);
+    tag = num2str(ecc);
     dv.h = handle_for('dbndh');
     dv.e = handle_for('dbnde');
     dv.c = handle_for('dbndc');

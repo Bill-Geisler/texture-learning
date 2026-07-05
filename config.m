@@ -35,9 +35,9 @@ function cfg = config()
                              6.984, 8.373, -0.922;
                             -1.096,-0.667,  5.814];
 
-    % --- patch geometry at level 1 (fovea); divide by the eccentricity level for others ---
-    cfg.patch.image_size = 640;   % GTR image size in pixels (level 1)
-    cfg.patch.size       = 64;    % 1-deg patch size in pixels (level 1)
+    % --- patch geometry at eccentricity 1 (fovea); divide by the eccentricity for the periphery ---
+    cfg.patch.image_size = 640;   % GTR image size in pixels (eccentricity 1, fovea)
+    cfg.patch.size       = 64;    % 1-deg patch size in pixels (eccentricity 1, fovea)
 
     % --- luminance/contrast normalization ---
     cfg.norm.target_mean     = 128;

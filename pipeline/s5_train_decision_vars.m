@@ -1,30 +1,30 @@
-function s5_train_decision_vars(cfg, lev, levb)
+function s5_train_decision_vars(cfg, ecc, eccb)
 % S5_TRAIN_DECISION_VARS  Train the near/far decision-variable bounds from patch pairs.
-%   s5_train_decision_vars(cfg, lev)
-%   s5_train_decision_vars(cfg, lev, levb)
+%   s5_train_decision_vars(cfg, ecc)
+%   s5_train_decision_vars(cfg, ecc, eccb)
 %
 %   Pipeline stage 5 (was nat_near_far_dv_2.m). Using the proximity proxy
 %   (near = "same", far = "different"), computes the power, spot, edge and border
 %   feature responses for all patch pairs, then trains quadratic decision bounds
 %   (via classify_normals) for, in order: spot (h), edge (e), content (c =
 %   power+spot+edge), border (b), and border+content (bc). Saves each bound to
-%   data/models/dbnd{h,e,c,b,bc}NO<lev>.mat.
+%   data/models/dbnd{h,e,c,b,bc}NO<ecc>.mat.
 %
 %   Run `setup` first; run stages 2-4 before. Requires IntClassNorm
 %   (classify_normals, quad2fun).
 %
 %   Inputs
 %     cfg  - config struct (see config.m).
-%     lev  - eccentricity downsample level of the patch pairs (1,2,4,8).
-%     levb - level of the histogram bin bounds to use (default 1, matching the
-%            original; set to lev to use same-level bins -- flagged for Geisler).
+%     ecc  - eccentricity downsample factor of the patch pairs (1,2,4,8).
+%     eccb - eccentricity of the histogram bin bounds to use (default 1, matching the
+%            original; set to ecc to use same-eccentricity bins -- flagged for Geisler).
 %
 %   NOTE: power suppression b0 = 16 here (training), vs 10 in the content-
 %   similarity computation (mk_phi/segmentation) -- preserved but flagged as a
 %   possible inconsistency. Outliers (|log DV| >= 25) are dropped, as in the original.
 
-    if nargin < 3 || isempty(levb), levb = 1; end
-    psz    = cfg.patch.size / lev;
+    if nargin < 3 || isempty(eccb), eccb = 1; end
+    psz    = cfg.patch.size / ecc;
     btype  = 5;                            % natural-image bound type
     b0     = 16;                           % weak-power suppression for training
     thresh = cfg.dv.edge_thresh;
@@ -37,9 +37,9 @@ function s5_train_decision_vars(cfg, lev, levb)
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
     coeff = tmp.coeff;
-    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, levb, double(cfg.optics.apply));
+    [n_bins, bin_bounds] = nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
 
-    pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', lev)), 'ptchn', 'ptchf');
+    pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
 
     % response matrices: columns [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2], rows = kept pairs
     near = pair_responses(pp.ptchn, coeff, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
@@ -69,7 +69,7 @@ function s5_train_decision_vars(cfg, lev, levb)
     dbndbc = train_bound(bc_near, bc_far);
 
     % save all bounds
-    tag = num2str(lev);
+    tag = num2str(ecc);
     save_bound(cfg, ['dbndh'  'NO' tag], 'dbndh',  dbndh);
     save_bound(cfg, ['dbnde'  'NO' tag], 'dbnde',  dbnde);
     save_bound(cfg, ['dbndc'  'NO' tag], 'dbndc',  dbndc);

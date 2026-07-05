@@ -1,31 +1,31 @@
-function s4_optimize_bins(cfg, dim, lev)
+function s4_optimize_bins(cfg, dim, ecc)
 % S4_OPTIMIZE_BINS  Learn adaptive-histogram bin bounds for one feature/eccentricity.
-%   s4_optimize_bins(cfg, dim, lev)
+%   s4_optimize_bins(cfg, dim, ecc)
 %
 %   Pipeline stage 4 (was opt_bins_nat.m + test_bnds_nat.m). Using the prior CDF
 %   of feature `dim` (from stage 2) and the near/far patch pairs (stage 3),
 %   greedily splits histogram bins (adaptive histogram equalization): a split is
 %   kept if it reduces the proximity (near-vs-far) classification error by more
 %   than a criterion fraction. The learned bounds are stored in ONE consolidated
-%   file holding all features x eccentricity levels -- data/models/AHEO_bins.mat
+%   file holding all features x eccentricities -- data/models/AHEO_bins.mat
 %   (optics applied) or AHE_bins.mat (no optics). Each call to this function
-%   updates the (dim, lev) slot of that file (read-modify-write). File structure:
+%   updates the (dim, ecc) slot of that file (read-modify-write). File structure:
 %     bin_bounds - cell [n_features x n_ecc], bin_bounds{f,e} = column of bin edges
 %     n_bins     - double [n_features x n_ecc], counts
-%     levels     - 1 x n_ecc eccentricity levels (columns); btype - 5 (natural).
+%     eccs     - 1 x n_ecc eccentricities (columns); btype - 5 (natural).
 %
-%   Run `setup` first; run stages 2 (CDFs) and 3 (patch pairs for `lev`) before.
+%   Run `setup` first; run stages 2 (CDFs) and 3 (patch pairs for `ecc`) before.
 %   Requires the IntClassNorm toolbox (classify_normals).
 %
 %   Inputs
 %     cfg - config struct (see config.m).
 %     dim - feature dimension (1,5,6,7,9,10,11,13,14; see cfg.features.names).
-%     lev - eccentricity downsample level (1,2,4,8).
+%     ecc - eccentricity downsample factor (1,2,4,8).
 
     btype   = 5;                          % bound type: natural images = 5
     err_crit = 0.002;                     % min fractional error reduction to keep a split
     max_bins = 100;
-    psz = cfg.patch.size / lev;
+    psz = cfg.patch.size / ecc;
 
     % --- prior CDF for this feature + the LMS->ABR rotation ---
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
@@ -34,7 +34,7 @@ function s4_optimize_bins(cfg, dim, lev)
     coeff = cdfs.coeff;
 
     % --- near/far patch pairs (combined, from stage 3) ---
-    pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', lev)), 'ptchn', 'ptchf');
+    pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
     ptchn = pp.ptchn;
     ptchf = pp.ptchf;
 
@@ -79,41 +79,41 @@ function s4_optimize_bins(cfg, dim, lev)
         end
     end
     nbnds = n_bins + 1;
-    bnds = bounds(:);                      % column of bin edges for this (dim, lev)
+    bnds = bounds(:);                      % column of bin edges for this (dim, ecc)
 
     % --- store into the consolidated bin-bounds file (one file for all features x
-    %     eccentricity levels; see load_bin_bounds for the exact structure). Each
-    %     call updates just the (dim, lev) slot: read the file if it exists, set the
+    %     eccentricities; see load_bin_bounds for the exact structure). Each
+    %     call updates just the (dim, ecc) slot: read the file if it exists, set the
     %     slot, write back. (Sequential pipeline, so no read/write race.)
     if cfg.optics.apply, file = 'AHEO_bins.mat'; else, file = 'AHE_bins.mat'; end
     out_path = fullfile(cfg.paths.models, file);
-    [bin_bounds, n_bins_all, levels] = load_or_init_bounds(out_path);
-    ecc = find(levels == lev, 1);
-    if isempty(ecc)
-        levels(end+1) = lev;               % new eccentricity column
-        ecc = numel(levels);
+    [bin_bounds, n_bins_all, eccs] = load_or_init_bounds(out_path);
+    ecc_idx = find(eccs == ecc, 1);
+    if isempty(ecc_idx)
+        eccs(end+1) = ecc;               % new eccentricity column
+        ecc_idx = numel(eccs);
     end
-    bin_bounds{dim, ecc} = bnds;
-    n_bins_all(dim, ecc) = nbnds;
-    out = struct('bin_bounds', {bin_bounds}, 'n_bins', n_bins_all, 'levels', levels, 'btype', btype);
+    bin_bounds{dim, ecc_idx} = bnds;
+    n_bins_all(dim, ecc_idx) = nbnds;
+    out = struct('bin_bounds', {bin_bounds}, 'n_bins', n_bins_all, 'eccs', eccs, 'btype', btype);
     save(out_path, '-struct', 'out');
-    fprintf('s4: dim %d lev %d -> %d bounds; updated %s\n', dim, lev, nbnds, out_path);
+    fprintf('s4: dim %d ecc %d -> %d bounds; updated %s\n', dim, ecc, nbnds, out_path);
 end
 
 % ------------------------------------------------------------------------------
-function [bin_bounds, n_bins_all, levels] = load_or_init_bounds(out_path)
+function [bin_bounds, n_bins_all, eccs] = load_or_init_bounds(out_path)
 % Load the consolidated bounds file if it exists, else initialize empty containers
-% (rows indexed by paper feature number 1..14; columns grow as levels are added).
+% (rows indexed by paper feature number 1..14; columns grow as eccs are added).
     n_features = 14;
     if isfile(out_path)
-        S = load(out_path, 'bin_bounds', 'n_bins', 'levels');
+        S = load(out_path, 'bin_bounds', 'n_bins', 'eccs');
         bin_bounds = S.bin_bounds;
         n_bins_all = S.n_bins;
-        levels     = S.levels;
+        eccs     = S.eccs;
     else
         bin_bounds = cell(n_features, 0);
         n_bins_all = zeros(n_features, 0);
-        levels     = [];
+        eccs     = [];
     end
 end
 
