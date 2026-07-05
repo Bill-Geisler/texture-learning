@@ -7,9 +7,12 @@ function [groups, groups2d, ngrps] = assign_isolated_patches(groups, groups2d, n
 %   is assigned to the 4-neighbour group with the highest content similarity (if
 %   positive); otherwise it starts a new group. (Was iso_patch.m.)
 %
-%   NOTE: the inner scan keeps the original `r ~= c` guard (was `i ~= j`), which
-%   skips grid cells on the row==col diagonal. This looks unintended (probably
-%   meant to exclude the patch itself); PRESERVED as-is and flagged for Geisler.
+%   NOTE: the inner scan excludes the isolated patch itself via
+%   `other_idx ~= patch_idx`. The original iso_patch.m used `i ~= j` (row==col),
+%   which neither excluded the patch nor kept diagonal group patches correctly;
+%   Geisler confirmed (2026-07) it should compare the scanned patch's linear index
+%   to the isolated patch's (his fix: `i1 ~= i0`), corrected here. Behaviour-changing
+%   vs the preprint (affects isolated-patch assignment in segmentation).
 %
 %   Inputs
 %     groups, groups2d - current group membership and 2-D label map.
@@ -51,8 +54,8 @@ function [groups, groups2d, ngrps] = assign_isolated_patches(groups, groups2d, n
             if gnum ~= 0
                 for r = 1:n_patches
                     for c = 1:n_patches
-                        if groups2d(r, c) == gnum && r ~= c   % 'r~=c' preserved; see NOTE
-                            other_idx = (r - 1) * n_patches + c;
+                        other_idx = (r - 1) * n_patches + c;
+                        if groups2d(r, c) == gnum && other_idx ~= patch_idx   % Geisler-confirmed (was 'i~=j'); see NOTE
                             sim = content_sim(patch_idx, other_idx);
                             if sim > max_sim
                                 max_sim = sim;

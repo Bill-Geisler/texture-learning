@@ -20,11 +20,11 @@ function [qbs, qbd] = self_sup_decision(method, R, dv)
     qbs = zeros(1, n);  qbd = zeros(1, n);
     switch method
         case 'bc'                                   % refit the bc bound on this image
-            bd = classify_normals([R.rbn', R.rcn'], [R.rbf', R.rcf'], 'input_type', 'samp', 'plotmode', 0);
+            bd = classify_normals([R.rcn', R.rbn'], [R.rcf', R.rbf'], 'input_type', 'samp', 'plotmode', 0);
             dvbc = quad2fun(bd.samp_opt_bd, 0);
             for i = 1:n
-                qbs(i) = dvbc([R.rbn(i), R.rcn(i)]');
-                qbd(i) = dvbc([R.rbf(i), R.rcf(i)]');
+                qbs(i) = dvbc([R.rcn(i), R.rbn(i)]');
+                qbd(i) = dvbc([R.rcf(i), R.rbf(i)]');
             end
         case 'bc_shft'                              % shift the pre-trained bc DV
             rbcn = apply_bc(dv.bc, R.rbn, R.rcn);
@@ -40,8 +40,8 @@ function [qbs, qbd] = self_sup_decision(method, R, dv)
             rbn = nan_to_zero(R.rbn);  rbf = nan_to_zero(R.rbf);
             copt = best_criterion(rcn, rcf, 1);
             for i = 1:n
-                qbs(i) = dv.bc([rbn(i), rcn(i) - copt]');
-                qbd(i) = dv.bc([rbf(i), rcf(i) - copt]');
+                qbs(i) = dv.bc([rcn(i) - copt, rbn(i)]');
+                qbd(i) = dv.bc([rcf(i) - copt, rbf(i)]');
             end
         otherwise
             error('self_sup_decision:badMethod', 'unknown method "%s"', method);
@@ -51,7 +51,7 @@ end
 function v = apply_bc(dvbc, rb, rc)
     v = zeros(1, numel(rb));
     for i = 1:numel(rb)
-        v(i) = dvbc([rb(i), rc(i)]');           % border-first ordering (see merge spec)
+        v(i) = dvbc([rc(i), rb(i)]');           % [content, border] ordering (Geisler-confirmed; matches s5 dbndbc training)
     end
     v(isnan(v)) = 0;
 end

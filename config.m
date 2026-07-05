@@ -44,7 +44,7 @@ function cfg = config()
     cfg.norm.target_contrast = 0.25;
 
     % --- decision-variable computation params (content-similarity / mk_phi context) ---
-    cfg.dv.power_suppress     = 10;    % weak Fourier-power suppression (beta) for content similarity
+    cfg.dv.power_suppress     = 16;    % weak Fourier-power suppression (beta); Geisler unified content-sim (was 10) to match DV training (2026-07)
     cfg.dv.edge_thresh        = 50;    % gradient threshold for the edge-count feature
     cfg.dv.sd1  = 1;  cfg.dv.nsd1 = 3; % 1st-derivative steerable kernel (edges)
     cfg.dv.sd2  = 1;  cfg.dv.nsd2 = 3; % 2nd-derivative steerable kernel (bars)
@@ -56,7 +56,7 @@ function cfg = config()
     cfg.gtr.seed_radius  = 1.0;   % region-seed radius as fraction of max
     cfg.gtr.coverage     = 1.0;   % fraction of the grid filled by regions
     cfg.gtr.dcrit        = 7.0;   % min separation (patches) for a "far" pair
-    cfg.gtr.power_suppress = 16;  % weak-power beta for the per-pair DVs (note: content-sim uses cfg.dv.power_suppress=10)
+    cfg.gtr.power_suppress = 16;  % weak-power beta for the per-pair DVs (matches cfg.dv.power_suppress=16)
 
     % --- reproducibility ---
     cfg.seed = 0;

@@ -19,9 +19,9 @@ function s5_train_decision_vars(cfg, ecc, eccb)
 %     eccb - eccentricity of the histogram bin bounds to use (default 1, matching the
 %            original; set to ecc to use same-eccentricity bins -- flagged for Geisler).
 %
-%   NOTE: power suppression b0 = 16 here (training), vs 10 in the content-
-%   similarity computation (mk_phi/segmentation) -- preserved but flagged as a
-%   possible inconsistency. Outliers (|log DV| >= 25) are dropped, as in the original.
+%   NOTE: power suppression b0 = 16 here (training) and now also in the content-
+%   similarity computation (cfg.dv.power_suppress=16) -- Geisler unified them (2026-07;
+%   content-sim was 10). Outliers (|log DV| >= 25) are dropped, as in the original.
 
     if nargin < 3 || isempty(eccb), eccb = 1; end
     psz    = cfg.patch.size / ecc;

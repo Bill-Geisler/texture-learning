@@ -27,8 +27,9 @@ shipped originals; **the shipped `data/models/` were left untouched.**
    `s3_make_nearfar_pairs`. (Flagged for Geisler.)
 
 Also fixed but **not** affecting this pipeline's artifacts: the `Re` bar-count map used
-feature 8, which the proximity pipeline (features 5, 7, 9, 10) does not use; the `Rb`
-off-border `/` (mrdivide) was **preserved** pending Geisler's confirmation.
+feature 8, which the proximity pipeline (features 5, 7, 9, 10) does not use. (The `Rb`
+off-border `/` and the other ambiguous items were **preserved for this run**, then later
+resolved by Geisler and applied — see "Additional fixes" below.)
 
 ### Measured differences — regenerated vs. shipped (eccentricity 1)
 
@@ -63,3 +64,24 @@ several features (so everything trained on top of them changes structure):
   way — the shipped files are as they were.
 - Only **eccentricity 1** (fovea) was regenerated here; a full replacement would also regenerate
   eccentricities 2/4/8.
+
+## Additional fixes from Geisler's corrections (applied 2026-07-05, NOT in the verification above)
+
+After the verification run, Bill Geisler returned corrected versions of his original functions
+(kept in `../fixed routines/`) that resolve the ambiguous items I had flagged. These were applied to
+the new code and are also **behaviour-changing**, so the level-1 diffs above do **not** include them —
+a re-verification would be needed to quantify their effect.
+
+- **Border DV `Rb` (`dv_border`): `/` → `./`.** Off-border energy is now the mean of element-wise log
+  edge-energy ratios (Geisler: "probably should be ./ but was /"). Changes `dbndb`/`dbndbc`.
+- **Border+content DV order → `[content, border]`.** Geisler's fixed `bc_shft` uses `[content, border]`
+  ("order reversed"). The new code's DV *training* (s5) already used this order; the *evaluation*
+  (`self_sup_decision`) used `[border, content]` and was corrected to match. Affects the bc-bound
+  methods in s6/s7 (`bc_noshift`/`bc_shft`/`c_shft`).
+- **Isolated-patch guard (`assign_isolated_patches`): `i~=j` → `i1~=i0`.** Excludes the isolated patch
+  by linear index (his fix), not row==col. Affects segmentation isolated-patch assignment.
+- **Power-suppression `b0`: content-similarity 10 → 16.** Geisler unified `mk_phi`'s `b0` to 16 (matching
+  DV training); `cfg.dv.power_suppress` updated.
+
+Also confirmed already-correct in the new code (no change): `aply_otf` single-mean (= `vislab.lib.otf_filter`,
+identical at 64 px/deg); `Ncs4` from `csl4`; the Set-12 slice offset; `ppd = 64`; `levb = 1`.
