@@ -7,7 +7,7 @@ function coeff = s1_learn_color_transform(cfg)
 %   1-deg patches, mean-normalize, and accumulate the LMS pixel values. Then run
 %   PCA to obtain the rotation into the opponent "ABR" axes (achromatic,
 %   blue-yellow, red-green) and save the 3x3 matrix. This LMS->ABR transform is
-%   lab-global, so it is written to the shared vislab_data store (as
+%   lab-global, so it is written to the shared vislab-common/data store (as
 %   cps_lms2abr_otf.mat) where the other lab projects also read it from.
 %
 %   Run `setup` first. Requires natural images in cfg.paths.natural_images and
@@ -19,7 +19,7 @@ function coeff = s1_learn_color_transform(cfg)
 %   projects consume. Diagnostic histograms from the original are omitted.
 %
 %   Output / side effect
-%     coeff - 3x3 LMS->ABR rotation matrix; also saved to vislab_data as
+%     coeff - 3x3 LMS->ABR rotation matrix; also saved to vislab-common/data as
 %             cps_lms2abr[_otf].mat (var `coeff`), shared across the lab.
 
     psz    = cfg.patch.size;

@@ -6,8 +6,8 @@ function setup()
 %   Adds to the path:
 %     * this repo (its +segmentation and +gtr packages, and pipeline/)
 %     * data/models  (shipped trained artifacts: PCA/CDF/bin/DV .mat files)
-%     * vislab (the shared code library) -- a git submodule inside this
-%       repo, or a sibling folder next to it (the lab's local dev layout)
+%     * vislab (the shared code library) -- the +vislab package inside the
+%       sibling vislab-common repo (the lab's local dev layout)
 %
 %   Also VERIFIES the required MATLAB add-on toolboxes are installed. These are
 %   installed through the MATLAB Add-On Explorer / File Exchange -- they are NOT
@@ -31,8 +31,8 @@ function setup()
     end
     if isempty(commons)
         warning('texture_learning:setup:noCommons', ...
-            ['vislab not found and could not be fetched automatically. ', ...
-             'Clone it next to this repo:  git clone https://github.com/abhranildas/vislab +vislab']);
+            ['vislab-common not found and could not be fetched automatically. ', ...
+             'Clone it next to this repo:  git clone https://github.com/abhranildas/vislab-common']);
     else
         addpath(fileparts(commons));                                     % exposes vislab.lib.*, vislab.nat_stat_bayes.*
     end
@@ -50,35 +50,39 @@ function setup()
     ensure_addon_on_path('classify_normals', 'Integrate and Classify Normal Distributions*', ...
         'Integrate and Classify Normal Distributions', 'https://github.com/abhranildas/IntClassNorm');
 
-    % --- shared data store: vislab_data (a sibling folder; ~23 GB, obtained manually) ---
-    if ~isfolder(fullfile(repo_root, '..', 'vislab_data'))
+    % --- shared data store: vislab-common/data (~23 GB, obtained manually) ---
+    if ~isfolder(fullfile(repo_root, '..', 'vislab-common', 'data'))
         warning('texture_learning:setup:noData', ...
-            ['vislab_data not found next to this repo. It is the large (~23 GB) shared data store ', ...
-             '(natural images + texture sheets); obtain it separately and place it beside this repo ', ...
+            ['vislab-common/data not found next to this repo. It is the large (~23 GB) shared data store ', ...
+             '(natural images + texture sheets); obtain it separately and place it in vislab-common/data ', ...
              '(see README). Code that reads it will fail until then.']);
     end
 end
 
 function folder = fetch_commons(repo_root)
-% Auto-fetch vislab as a sibling folder (../vislab) by cloning it
-% with git. Needs git on the PATH and network access; returns '' if the clone fails
-% (the caller then warns with manual instructions).
+% Auto-fetch the shared library by cloning the vislab-common repo as a sibling
+% (../vislab-common); the +vislab package lives inside it. Needs git on the PATH
+% and network access; returns '' if the clone fails (caller then warns).
     folder = '';
-    target = fullfile(repo_root, '..', '+vislab');
-    url = 'https://github.com/abhranildas/vislab.git';
-    fprintf('vislab not found; trying to clone it to %s ...\n', target);
-    [status, out] = system(sprintf('git clone "%s" "%s"', url, target));
+    repo_dir = fullfile(repo_root, '..', 'vislab-common');
+    url = 'https://github.com/abhranildas/vislab-common.git';
+    fprintf('vislab-common not found; trying to clone it to %s ...\n', repo_dir);
+    [status, out] = system(sprintf('git clone "%s" "%s"', url, repo_dir));
+    target = fullfile(repo_dir, '+vislab');
     if status == 0 && isfolder(fullfile(target, '+lib'))
         folder = target;
-        fprintf('Cloned vislab.\n');
+        fprintf('Cloned vislab-common.\n');
     else
-        fprintf(2, 'Could not auto-fetch vislab (git missing or offline?).\n%s\n', out);
+        fprintf(2, 'Could not auto-fetch vislab-common (git missing or offline?).\n%s\n', out);
     end
 end
 
 function folder = locate_folder(repo_root, name)
-% Find vislab as a sibling folder next to the repo (or inside it, if present).
-    candidates = {fullfile(repo_root, name), fullfile(repo_root, '..', name)};
+% Find the +vislab package: inside the sibling vislab-common repo (canonical),
+% else as a sibling of / inside this repo (older dev layouts).
+    candidates = {fullfile(repo_root, '..', 'vislab-common', name), ...
+                  fullfile(repo_root, name), ...
+                  fullfile(repo_root, '..', name)};
     folder = '';
     for i = 1:numel(candidates)
         if isfolder(candidates{i})

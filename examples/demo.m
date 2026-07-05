@@ -10,9 +10,9 @@
 %   resulting near-far / same-different accuracy surface (cf. the paper's Fig. 4).
 %
 %   Re-learning the model from scratch (stages s1-s5) instead requires the
-%   calibrated natural images in vislab_data; see the README "pipeline" section.
+%   calibrated natural images in vislab-common/data; see the README "pipeline" section.
 %   All six texture datasets (Pertex, Fabric, Brodatz, VisTex, McGill) are
-%   supported; each just needs its sheets present in vislab_data/textures.
+%   supported; each just needs its sheets present in vislab-common/data/textures.
 
 % --- locate the repo and set up the path ---
 this_dir  = fileparts(mfilename('fullpath'));
@@ -24,7 +24,7 @@ cfg = config;
 % --- 1. check the shipped trained artifacts are present ---
 needed = {'cdfs_abr_mo13_mo23_cs33_otf.mat', ...
           'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO_bins.mat'};
-% (the LMS->ABR transform now lives in the shared vislab_data/cps_lms2abr_otf.mat;
+% (the LMS->ABR transform now lives in the shared vislab-common/data/cps_lms2abr_otf.mat;
 %  the demo reads its rotation from the cdfs file, so it isn't checked here.)
 present = cellfun(@(f) exist(fullfile(cfg.paths.models, f), 'file') > 0, needed);
 if ~all(present)
@@ -37,7 +37,7 @@ fprintf('Trained model found in %s\n', cfg.paths.models);
 
 % --- 2. run the self-supervised discrimination stage on Brodatz ---
 method = 'bc';    % per-image retraining of the border+content bound (paper: NCB)
-itype  = 3;       % 3 = Brodatz (data present in vislab_data/textures/brodatz)
+itype  = 3;       % 3 = Brodatz (data present in vislab-common/data/textures/brodatz)
 ecc    = 1;       % foveal
 ntrl   = 2;       % GTR images to average over (small, for a quick demo)
 
@@ -49,7 +49,7 @@ catch err
     if contains(err.identifier, 'datasetMissing')
         error('demo:noTextureData', ...
             ['Brodatz texture sheets are not available/readable in %s.\n' ...
-             'Ensure vislab_data/textures/brodatz/B*.gif are downloaded locally (see USER_TODO.md).'], ...
+             'Ensure vislab-common/data/textures/brodatz/B*.gif are downloaded locally (see USER_TODO.md).'], ...
             cfg.paths.textures);
     else
         rethrow(err);

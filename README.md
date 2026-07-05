@@ -16,13 +16,14 @@ for the HBO model this builds on.
 
 ## Dependencies
 
-- **[vislab](https://github.com/abhranildas/vislab)** — the lab's shared MATLAB library (a sibling
-  folder next to this repo; `setup.m` clones it automatically if it's missing). Provides `vislab.lib.*` (optics, filters, normalization, …) and
+- **[vislab-common](https://github.com/abhranildas/vislab-common)** — the lab's shared MATLAB library
+  (the `+vislab` package inside the sibling `vislab-common` folder; `setup.m` clones it automatically if
+  it's missing). Provides `vislab.lib.*` (optics, filters, normalization, …) and
   `vislab.nat_stat_bayes.*` (the decision-variable / natural-scene-statistics toolkit).
 - **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
   **[gx2](https://github.com/abhranildas/gx2)** — installed MATLAB **add-on toolboxes** (Add-On Explorer /
   File Exchange). `setup.m` verifies they're installed; they are *not* bundled or fetched as source.
-- **vislab_data** — the shared data store (~23 GB: calibrated natural images + texture sheets), a sibling
+- **vislab-common/data** — the shared data store (~23 GB: calibrated natural images + texture sheets), a sibling
   folder alongside this repo. Unlike vislab it is **too large to auto-download**, so obtain it
   separately and place it next to the repo (`setup.m` warns if it's missing; edit `cfg.paths.data_root` if
   it's elsewhere). The shipped model + Brodatz sheets cover the demo; the full natural-image set is only
@@ -33,7 +34,7 @@ for the HBO model this builds on.
 
 ```matlab
 setup            % adds this repo + vislab to the path; checks the toolboxes
-cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab_data isn't a sibling
+cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab-common/data isn't a sibling
 ```
 
 ## The pipeline
@@ -43,7 +44,7 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 
 | Stage | Function (`pipeline/`) | Produces |
 |---|---|---|
-| 1 | `s1_learn_color_transform(cfg)` | `vislab_data/cps_lms2abr_otf.mat` — LMS→ABR colour rotation (lab-shared) |
+| 1 | `s1_learn_color_transform(cfg)` | `vislab-common/data/cps_lms2abr_otf.mat` — LMS→ABR colour rotation (lab-shared) |
 | 2 | `s2_learn_feature_cdfs(cfg)` | `cdfs_abr_mo13_mo23_cs33_otf.mat` — task-independent feature CDFs |
 | 3 | `s3_make_nearfar_pairs(cfg, ecc)` | `patch_pairs_<ecc>.mat` — near/far training pairs |
 | 4 | `s4_optimize_bins(cfg, dim, ecc)` | `AHEO<btype><dim><ecc>.mat` — adaptive histogram bins |
@@ -73,7 +74,7 @@ run('examples/demo.m')      % sets up the path, runs s6 on Brodatz, prints + plo
 
 It reports the peak accuracy and shows the accuracy surface over the grouping-criterion x
 mutual-similarity-weight grid. Expect a few minutes (it builds GTR images and computes all pairwise
-patch similarities). Requires the Brodatz sheets in `vislab_data/textures/brodatz/`; other texture
+patch similarities). Requires the Brodatz sheets in `vislab-common/data/textures/brodatz/`; other texture
 datasets need additional data (see `../USER_TODO.md`).
 
 ## Repository layout
@@ -104,7 +105,7 @@ Shared low-level code lives in `vislab` (not here), so it isn't duplicated acros
 
 - `docs/GLOSSARY.md` — code names ↔ paper symbols ↔ meanings.
 - `docs/DATA_DICTIONARY.md` — contents of every `.mat` artifact and the filename codes.
-- `../vislab/ARCHITECTURE.md` — how this repo, vislab, the toolboxes, and vislab_data fit together.
+- `../vislab-common/ARCHITECTURE.md` — how this repo, vislab, the toolboxes, and vislab-common/data fit together.
 
 ## License & citation
 

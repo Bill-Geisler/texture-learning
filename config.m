@@ -5,14 +5,14 @@ function cfg = config()
 %   the task-feature definitions. Pipeline stage functions take cfg and may
 %   override stage-specific fields.
 %
-%   EDIT cfg.paths.data_root below if the shared vislab_data store is not a
-%   sibling of this repo.
+%   EDIT cfg.paths.data_root below if the shared data store (vislab-common/data)
+%   is not next to this repo.
 
     repo_root = fileparts(mfilename('fullpath'));
 
     % --- data locations ---
     cfg.paths.repo_root      = repo_root;
-    cfg.paths.data_root      = fullfile(repo_root, '..', 'vislab_data');   % shared lab data store
+    cfg.paths.data_root      = fullfile(repo_root, '..', 'vislab-common', 'data');   % shared lab data store
     cfg.paths.natural_images = fullfile(cfg.paths.data_root, 'CPS natural images');
     cfg.paths.textures       = fullfile(cfg.paths.data_root, 'textures');
     cfg.paths.models         = fullfile(repo_root, 'data', 'models');      % shipped trained artifacts
@@ -31,7 +31,7 @@ function cfg = config()
     cfg.natural.n_samples = 20;         % random patches sampled per image
 
     % --- camera RGB -> human LMS cone matrix: now the shared lab calibration,
-    %     loaded automatically by vislab.lib.rgb2lms from vislab_data/cps_rgb2lms.mat
+    %     loaded automatically by vislab.lib.rgb2lms from vislab-common/data/cps_rgb2lms.mat
     %     (no longer hardcoded here). ---
 
     % --- patch geometry at eccentricity 1 (fovea); divide by the eccentricity for the periphery ---

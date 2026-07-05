@@ -12,7 +12,7 @@ function s2_learn_feature_cdfs(cfg)
 %   task-independent priors, Fig. 5) and saves them, with the rotation matrix,
 %   to data/models/cdfs_abr_mo13_mo23_cs33[_otf].mat.
 %
-%   Run `setup` first; run stage 1 first (or ensure vislab_data/cps_lms2abr_otf.mat exists).
+%   Run `setup` first; run stage 1 first (or ensure vislab-common/data/cps_lms2abr_otf.mat exists).
 %
 %   Fixes vs original: the large center-surround CDF (Ncs4) is now computed from
 %   its own data (csl4), not csl2 (a copy/paste bug) -- behaviour-changing for

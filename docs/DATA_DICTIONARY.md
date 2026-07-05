@@ -2,7 +2,7 @@
 
 Contents of every `.mat` artifact and the filename codes. Shipped artifacts live in `data/models/`;
 generated data in `data/derived/` (git-ignored). Large inputs (natural images, texture sheets) live in
-the external `vislab_data/` store (see `config.m`).
+the external `vislab-common/data/` store (see `config.m`).
 
 ## Filename codes
 
@@ -17,9 +17,9 @@ the external `vislab_data/` store (see `config.m`).
 - **`cdfs_abr_mo13_mo23_cs33[_otf].mat`** — see below (`mo13`=1st-deriv
   magnitude/orientation, `mo23`=2nd-deriv magnitude/orientation, `cs33`=3×3 center-surround).
   (The LMS→ABR rotation is **not** shipped here — it is the lab-shared `cps_lms2abr_otf.mat` in
-  `vislab_data/`; see below.)
+  `vislab-common/data/`; see below.)
 
-## `cps_lms2abr_otf.mat`  (stage 1 output — **shared**, lives in `vislab_data/`)
+## `cps_lms2abr_otf.mat`  (stage 1 output — **shared**, lives in `vislab-common/data/`)
 The lab-global LMS→ABR colour transform, produced by stage 1 and consumed by all lab projects
 (texture-learning, texture-segmentation, …). Was `PCA_matrix_3_OTF.mat` under `data/models`.
 | var | type | meaning |
@@ -63,7 +63,7 @@ Segmentation results per texture type (P=Pertex, F=Fabric, B=Brodatz, BF=Brodatz
 M=McGill): region counts and accuracy surfaces over the grouping-criterion sweeps. Schema to be
 finalized when stage 7 is implemented (blocked on the texture-dataset layout — see `../../USER_TODO.md`).
 
-## External inputs (in `vislab_data/`, not in this repo)
+## External inputs (in `vislab-common/data/`, not in this repo)
 - `CPS natural images/Set{9,10,12}_16_*.png` — 16-bit calibrated natural images (stages 1–3).
 - `textures/{brodatz,fabric,pertex,…}/` — texture sheets for GTR images (stages 6–7).
 - `cps_rgb2lms.mat` (var `lms`, 3×3) — shared camera-RGB→LMS calibration; auto-loaded by `vislab.lib.rgb2lms`.
