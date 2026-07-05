@@ -22,7 +22,11 @@ for the HBO model this builds on.
 - **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
   **[gx2](https://github.com/abhranildas/gx2)** — installed MATLAB **add-on toolboxes** (Add-On Explorer /
   File Exchange). `setup.m` verifies they're installed; they are *not* bundled or fetched as source.
-- **global_data** — the shared data store (natural images, texture sheets). Point `config.m` at it.
+- **global_data** — the shared data store (~23 GB: calibrated natural images + texture sheets), a sibling
+  folder alongside this repo. Unlike vision-commons it is **too large to auto-download**, so obtain it
+  separately and place it next to the repo (`setup.m` warns if it's missing; edit `cfg.paths.data_root` if
+  it's elsewhere). The shipped model + Brodatz sheets cover the demo; the full natural-image set is only
+  needed to retrain (s1–s5) from scratch.
 - MATLAB with the Image Processing and Statistics & Machine Learning toolboxes.
 
 ## Setup

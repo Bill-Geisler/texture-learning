@@ -49,6 +49,14 @@ function setup()
         'Generalized chi-square distribution (gx2)', 'https://github.com/abhranildas/gx2');
     ensure_addon_on_path('classify_normals', 'Integrate and Classify Normal Distributions*', ...
         'Integrate and Classify Normal Distributions', 'https://github.com/abhranildas/IntClassNorm');
+
+    % --- shared data store: global_data (a sibling folder; ~23 GB, obtained manually) ---
+    if ~isfolder(fullfile(repo_root, '..', 'global_data'))
+        warning('texture_learning:setup:noData', ...
+            ['global_data not found next to this repo. It is the large (~23 GB) shared data store ', ...
+             '(natural images + texture sheets); obtain it separately and place it beside this repo ', ...
+             '(see README). Code that reads it will fail until then.']);
+    end
 end
 
 function folder = fetch_commons(repo_root)
