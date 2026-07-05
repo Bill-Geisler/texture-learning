@@ -6,17 +6,21 @@ function coeff = s1_learn_color_transform(cfg)
 %   scale to 0..255, apply eye optics, convert to LMS cone space, sample random
 %   1-deg patches, mean-normalize, and accumulate the LMS pixel values. Then run
 %   PCA to obtain the rotation into the opponent "ABR" axes (achromatic,
-%   blue-yellow, red-green) and save the 3x3 matrix to data/models.
+%   blue-yellow, red-green) and save the 3x3 matrix. This LMS->ABR transform is
+%   lab-global, so it is written to the shared vislab_data store (as
+%   cps_lms2abr_otf.mat) where the other lab projects also read it from.
 %
 %   Run `setup` first. Requires natural images in cfg.paths.natural_images and
 %   the Statistics Toolbox (pca).
 %
-%   NOTE: uses the corrected vislab.lib.otf_filter, so the saved matrix differs
-%   slightly from the preprint's PCA_matrix_3_OTF.mat (see the reorganization
-%   plan / CHANGELOG). Diagnostic histograms from the original are omitted.
+%   NOTE: uses the corrected vislab.lib.otf_filter, so the recomputed matrix differs
+%   slightly from the preprint version (see the reorganization plan / CHANGELOG);
+%   re-running this stage overwrites the shared cps_lms2abr_otf.mat that all lab
+%   projects consume. Diagnostic histograms from the original are omitted.
 %
 %   Output / side effect
-%     coeff - 3x3 LMS->ABR rotation matrix; also saved as PCA_matrix_3[_OTF].mat.
+%     coeff - 3x3 LMS->ABR rotation matrix; also saved to vislab_data as
+%             cps_lms2abr[_otf].mat (var `coeff`), shared across the lab.
 
     psz    = cfg.patch.size;
     nsmp   = cfg.natural.n_samples;
@@ -50,8 +54,8 @@ function coeff = s1_learn_color_transform(cfg)
 
     coeff = pca(lms_pixels);                          % columns = principal (ABR) axes
 
-    if cfg.optics.apply, fname = 'PCA_matrix_3_OTF.mat'; else, fname = 'PCA_matrix_3.mat'; end
-    out_path = fullfile(cfg.paths.models, fname);
+    if cfg.optics.apply, fname = 'cps_lms2abr_otf.mat'; else, fname = 'cps_lms2abr.mat'; end
+    out_path = fullfile(cfg.paths.data_root, fname);   % lab-global transform lives in the shared store
     save(out_path, 'coeff');
     fprintf('s1: saved LMS->ABR rotation to %s (%d pixels from %d images)\n', out_path, n, numel(files));
 end

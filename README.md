@@ -43,7 +43,7 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 
 | Stage | Function (`pipeline/`) | Produces |
 |---|---|---|
-| 1 | `s1_learn_color_transform(cfg)` | `PCA_matrix_3_OTF.mat` — LMS→ABR colour rotation |
+| 1 | `s1_learn_color_transform(cfg)` | `vislab_data/cps_lms2abr_otf.mat` — LMS→ABR colour rotation (lab-shared) |
 | 2 | `s2_learn_feature_cdfs(cfg)` | `cdfs_abr_mo13_mo23_cs33_otf.mat` — task-independent feature CDFs |
 | 3 | `s3_make_nearfar_pairs(cfg, ecc)` | `patch_pairs_<ecc>.mat` — near/far training pairs |
 | 4 | `s4_optimize_bins(cfg, dim, ecc)` | `AHEO<btype><dim><ecc>.mat` — adaptive histogram bins |

@@ -22,8 +22,10 @@ setup;
 cfg = config;
 
 % --- 1. check the shipped trained artifacts are present ---
-needed = {'PCA_matrix_3_OTF.mat', 'cdfs_abr_mo13_mo23_cs33_otf.mat', ...
+needed = {'cdfs_abr_mo13_mo23_cs33_otf.mat', ...
           'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO_bins.mat'};
+% (the LMS->ABR transform now lives in the shared vislab_data/cps_lms2abr_otf.mat;
+%  the demo reads its rotation from the cdfs file, so it isn't checked here.)
 present = cellfun(@(f) exist(fullfile(cfg.paths.models, f), 'file') > 0, needed);
 if ~all(present)
     error('demo:missingArtifacts', ...

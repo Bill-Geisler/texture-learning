@@ -12,7 +12,7 @@ function s2_learn_feature_cdfs(cfg)
 %   task-independent priors, Fig. 5) and saves them, with the rotation matrix,
 %   to data/models/cdfs_abr_mo13_mo23_cs33[_otf].mat.
 %
-%   Run `setup` first; run stage 1 (or ship PCA_matrix) beforehand.
+%   Run `setup` first; run stage 1 first (or ensure vislab_data/cps_lms2abr_otf.mat exists).
 %
 %   Fixes vs original: the large center-surround CDF (Ncs4) is now computed from
 %   its own data (csl4), not csl2 (a copy/paste bug) -- behaviour-changing for
@@ -31,8 +31,8 @@ function s2_learn_feature_cdfs(cfg)
     sd1 = 1; nsd1 = 3; sd2 = 1; nsd2 = 3;
     swid = 3;                            % center-surround window (cs_type 4 uses a fixed 5x5)
 
-    if cfg.optics.apply, pca_file = 'PCA_matrix_3_OTF.mat'; else, pca_file = 'PCA_matrix_3.mat'; end
-    s = load(fullfile(cfg.paths.models, pca_file), 'coeff');
+    if cfg.optics.apply, xform_file = 'cps_lms2abr_otf.mat'; else, xform_file = 'cps_lms2abr.mat'; end
+    s = load(fullfile(cfg.paths.data_root, xform_file), 'coeff');   % shared lab LMS->ABR transform
     coeff = s.coeff;
 
     files = list_natural_images(cfg);

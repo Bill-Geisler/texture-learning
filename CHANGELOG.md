@@ -35,7 +35,7 @@ resolved by Geisler and applied — see "Additional fixes" below.)
 
 `max|d|` = maximum absolute element-wise difference between the regenerated and shipped array.
 
-**s1 — LMS→ABR color rotation** (`PCA_matrix_3_OTF.mat`)
+**s1 — LMS→ABR color rotation** (`cps_lms2abr_otf.mat`, shared in `vislab_data/`; was `PCA_matrix_3_OTF.mat`)
 - `coeff`: `max|d| = 0.0695` — attributable to the OTF fix.
 
 **s2 — feature CDFs** (`cdfs_abr_mo13_mo23_cs33_otf.mat`)
