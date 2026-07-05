@@ -37,10 +37,7 @@ function out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)
     feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
     cstat        = zeros(1,20); cstat([1 5 6 7 9 10 11 13 14]) = 5;
 
-    % artifacts: rotation, bin bounds, trained DV handles
-    if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
-    tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
-    coeff = tmp.coeff;
+    % artifacts: bin bounds + trained DV handles (LMS->ABR transform is auto-loaded by apply_color_rotation)
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     dv = load_dv_handles(cfg, ecc, mp.load_bc);
 
@@ -57,9 +54,9 @@ function out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)
     for trl = 1:ntrl
         [pimg, px, py] = make_gtr_image(cfg, imgr, imgg, imgb, texs(trl,:), maps(:,:,trl));
         phiall = segmentation.content_similarity_matrix(pimg, cfg.gtr.szp, size(pimg,1)/cfg.gtr.szp, ...
-            px, py, coeff, bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
+            px, py, bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
         rho = segmentation.mutual_similarity(phiall);
-        R = neighbor_far_responses(cfg, pimg, rho, maps(:,:,trl), bin_bounds, n_bins, coeff, dv, feature_list);
+        R = neighbor_far_responses(cfg, pimg, rho, maps(:,:,trl), bin_bounds, n_bins, dv, feature_list);
 
         % per-image self-supervised step -> combined near/far decision variables qbs/qbd
         [qbs, qbd] = self_sup_decision(method, R, dv);

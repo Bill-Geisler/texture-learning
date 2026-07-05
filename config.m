@@ -30,10 +30,9 @@ function cfg = config()
     cfg.natural.max_val   = 2^14 - 1;   % 14-bit pixel max (images scaled by 255/max_val)
     cfg.natural.n_samples = 20;         % random patches sampled per image
 
-    % --- camera RGB -> human LMS cone matrix ---
-    cfg.color.rgb_to_lms = [ 4.370, 1.338,  0.118;
-                             6.984, 8.373, -0.922;
-                            -1.096,-0.667,  5.814];
+    % --- camera RGB -> human LMS cone matrix: now the shared lab calibration,
+    %     loaded automatically by vislab.lib.rgb2lms from vislab_data/cps_rgb2lms.mat
+    %     (no longer hardcoded here). ---
 
     % --- patch geometry at eccentricity 1 (fovea); divide by the eccentricity for the periphery ---
     cfg.patch.image_size = 640;   % GTR image size in pixels (eccentricity 1, fovea)

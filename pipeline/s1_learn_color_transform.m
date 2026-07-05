@@ -39,7 +39,7 @@ function coeff = s1_learn_color_transform(cfg)
         if cfg.optics.apply
             img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        img_lms = vislab.lib.rgb2lms(img, cfg.color.rgb_to_lms);
+        img_lms = vislab.lib.rgb2lms(img);            % shared lab RGB->LMS calibration
         [n_rows, n_cols, ~] = size(img_lms);
         for s = 1:nsmp
             x = randi(n_rows - psz);

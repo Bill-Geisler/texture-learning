@@ -34,16 +34,14 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     feature_list = zeros(1, 20);  feature_list([1 5 6 7 9 10 11 13 14]) = 1;
     cstat        = zeros(1, 20);  cstat([1 5 6 7 9 10 11 13 14]) = btype;
 
-    if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
-    tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
-    coeff = tmp.coeff;
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
+    % (LMS->ABR rotation is auto-loaded by apply_color_rotation from the shared store)
 
     pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
 
     % response matrices: columns [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2], rows = kept pairs
-    near = pair_responses(pp.ptchn, coeff, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
-    far  = pair_responses(pp.ptchf, coeff, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
+    near = pair_responses(pp.ptchn, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
+    far  = pair_responses(pp.ptchf, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
 
     % spot (h): features [1 13 14]
     dbndh = train_bound(near(:, 1:3), far(:, 1:3));
@@ -79,7 +77,7 @@ function s5_train_decision_vars(cfg, ecc, eccb)
 end
 
 % ------------------------------------------------------------------------------
-function R = pair_responses(patches, coeff, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg)
+function R = pair_responses(patches, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg)
 % Per-pair [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2], dropping outliers (|.|>=25 in rh/re/rp).
     m0 = cfg.norm.target_mean;
     c0 = cfg.norm.target_contrast;
@@ -89,7 +87,7 @@ function R = pair_responses(patches, coeff, bin_bounds, n_bins, feature_list, nh
     n = 0;
     for i = 1:n_pairs
         p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
-        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3), coeff, psz);
+        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
         a1 = p1(:, :, 1);
         a2 = p2(:, :, 1);
 

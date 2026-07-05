@@ -1,8 +1,8 @@
 function [phi, dst] = neighbor_similarity_matrix(image, n_patches, patch_size, patch_x, patch_y, ...
-        neighbor_distance, color_rotation, bin_bounds, n_bins, feature_list, dv, cfg)
+        neighbor_distance, bin_bounds, n_bins, feature_list, dv, cfg)
 % NEIGHBOR_SIMILARITY_MATRIX  Border+content similarity for neighbouring patch pairs.
 %   [phi, dst] = segmentation.neighbor_similarity_matrix(image, n_patches, ...
-%       patch_size, patch_x, patch_y, neighbor_distance, color_rotation, ...
+%       patch_size, patch_x, patch_y, neighbor_distance, ...
 %       bin_bounds, n_bins, feature_list, dv, cfg)
 %
 %   For each NEIGHBOURING patch pair (Euclidean patch-centre distance equal to
@@ -17,8 +17,8 @@ function [phi, dst] = neighbor_similarity_matrix(image, n_patches, patch_size, p
 %     dv                - struct of trained DV handles: dv.h, dv.e, dv.c, dv.b, dv.bc.
 %
 %   Note: per-pair DVs use cfg.gtr.power_suppress (b0=16), matching
-%   neighbor_far_responses; content_similarity_matrix uses cfg.dv.power_suppress
-%   (=10). This 16-vs-10 split is preserved from the originals (flagged for Geisler).
+%   neighbor_far_responses and content_similarity_matrix (cfg.dv.power_suppress,
+%   also 16 since Geisler unified b0 -- 2026-07).
 
     n = n_patches^2;
     m0 = cfg.norm.target_mean;
@@ -67,7 +67,7 @@ function [phi, dst] = neighbor_similarity_matrix(image, n_patches, patch_size, p
             re = dv.e(log(edge(edge_dims))');
             rc = dv.c([rp, rh, re]');
 
-            phi(i, j) = dv.bc([rb, rc]');               % border-first ordering (see merge spec)
+            phi(i, j) = dv.bc([rc, rb]');               % [content, border] ordering (Geisler-confirmed; matches s5 dbndbc training)
             phi(j, i) = phi(i, j);
         end
     end
@@ -76,6 +76,6 @@ function [phi, dst] = neighbor_similarity_matrix(image, n_patches, patch_size, p
         rows = (patch_x(idx) - 1) * patch_size + (1:patch_size);
         cols = (patch_y(idx) - 1) * patch_size + (1:patch_size);
         p = vislab.lib.ptch_norm(image(rows, cols, :), m0, c0, norm_type, n_colr);
-        p = vislab.nat_stat_bayes.apply_color_rotation(p, color_rotation, patch_size);
+        p = vislab.nat_stat_bayes.apply_color_rotation(p);   % shared LMS->ABR transform
     end
 end

@@ -1,8 +1,8 @@
 function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, patch_y, ...
-        color_rotation, bin_bounds, n_bins, feature_list, dv_spot_fun, dv_edge_fun, dv_content_fun, cfg)
+        bin_bounds, n_bins, feature_list, dv_spot_fun, dv_edge_fun, dv_content_fun, cfg)
 % CONTENT_SIMILARITY_MATRIX  All-pairs content similarity between image patches.
 %   phi = segmentation.content_similarity_matrix(image, n_patches, patch_size, ...
-%       patch_x, patch_y, color_rotation, bin_bounds, n_bins, feature_list, ...
+%       patch_x, patch_y, bin_bounds, n_bins, feature_list, ...
 %       dv_spot_fun, dv_edge_fun, dv_content_fun, cfg)
 %
 %   For every pair of patches, computes the content decision variable (paper:
@@ -16,7 +16,6 @@ function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, 
 %     n_patches      - grid width in patches (image is n_patches^2 patches).
 %     patch_size     - patch side length in pixels.
 %     patch_x,patch_y- patch-index -> grid-coordinate maps.
-%     color_rotation - 3x3 LMS->ABR rotation matrix (coeff).
 %     bin_bounds,n_bins - histogram bin bounds/counts (vislab.nat_stat_bayes.load_bin_bounds).
 %     feature_list   - indicator vector of which DV features to compute.
 %     dv_spot_fun    - trained spot DV function handle (quad2fun of dbndh).
@@ -37,9 +36,9 @@ function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, 
 
     phi = zeros(n, n);
     for i = 1:n
-        p1 = prep_patch(image, patch_x(i), patch_y(i), patch_size, m0, c0, color_norm_type, n_colr, color_rotation);
+        p1 = prep_patch(image, patch_x(i), patch_y(i), patch_size, m0, c0, color_norm_type, n_colr);
         for j = i+1:n
-            p2 = prep_patch(image, patch_x(j), patch_y(j), patch_size, m0, c0, color_norm_type, n_colr, color_rotation);
+            p2 = prep_patch(image, patch_x(j), patch_y(j), patch_size, m0, c0, color_norm_type, n_colr);
 
             gray1 = p1(:, :, 1);            % achromatic channel for power/edge
             gray2 = p2(:, :, 1);
@@ -68,11 +67,11 @@ function phi = content_similarity_matrix(image, n_patches, patch_size, patch_x, 
     end
 end
 
-function patch = prep_patch(image, gx, gy, patch_size, m0, c0, norm_type, n_colr, color_rotation)
+function patch = prep_patch(image, gx, gy, patch_size, m0, c0, norm_type, n_colr)
 % Extract the patch at grid (gx,gy), normalize, and rotate into ABR colour space.
     rows = (gx - 1) * patch_size + (1:patch_size);
     cols = (gy - 1) * patch_size + (1:patch_size);
     patch = image(rows, cols, :);
     patch = vislab.lib.ptch_norm(patch, m0, c0, norm_type, n_colr);
-    patch = vislab.nat_stat_bayes.apply_color_rotation(patch, color_rotation, patch_size);
+    patch = vislab.nat_stat_bayes.apply_color_rotation(patch);   % shared LMS->ABR transform
 end

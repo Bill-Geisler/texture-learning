@@ -60,7 +60,7 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
         if cfg.optics.apply
             cimg = vislab.lib.otf_filter(cimg, cfg.optics.ppd, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        cimg = vislab.lib.rgb2lms(cimg, cfg.color.rgb_to_lms);
+        cimg = vislab.lib.rgb2lms(cimg);              % shared lab RGB->LMS calibration
         cimg = vislab.lib.downsample(cimg, ecc);
         imgr(:, :, k) = cimg(:, :, 1);
         imgg(:, :, k) = cimg(:, :, 2);

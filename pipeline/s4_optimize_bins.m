@@ -27,11 +27,10 @@ function s4_optimize_bins(cfg, dim, ecc)
     max_bins = 100;
     psz = cfg.patch.size / ecc;
 
-    % --- prior CDF for this feature + the LMS->ABR rotation ---
+    % --- prior CDF for this feature (LMS->ABR rotation auto-loaded by apply_color_rotation) ---
     if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     cdfs = load(fullfile(cfg.paths.models, cdf_file));
     [cdf_x, cdf_p] = cdf_for_dim(cdfs, dim);
-    coeff = cdfs.coeff;
 
     % --- near/far patch pairs (combined, from stage 3) ---
     pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
@@ -56,7 +55,7 @@ function s4_optimize_bins(cfg, dim, ecc)
         for i = 1:n_bins
             if frozen(i) == 0
                 [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, cdf_x, cdf_p);
-                err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg, coeff);
+                err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg);
                 if (prev_err - err) / prev_err > err_crit
                     bounds = cand_bounds;
                     indices = cand_indices;
@@ -139,7 +138,7 @@ function [cdf_x, cdf_p] = cdf_for_dim(cdfs, dim)
 end
 
 % ------------------------------------------------------------------------------
-function err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg, coeff)
+function err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg)
 % Near-vs-far classification error for one feature under candidate bin bounds
 % (was test_bnds_nat.m). Uses the proximity proxy: near = "same", far = "different".
     rng(cfg.seed);
@@ -154,15 +153,15 @@ function err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg, coeff)
     feature_list = zeros(1, max_dim);
     feature_list(dim) = 1;
 
-    near = dim_response(ptchn, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg, coeff);
-    far  = dim_response(ptchf, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg, coeff);
+    near = dim_response(ptchn, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg);
+    far  = dim_response(ptchf, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg);
 
     result = classify_normals(near, far, 'input_type', 'samp', 'plotmode', 0);
     err = result.samp_opt_err;
 end
 
 % ------------------------------------------------------------------------------
-function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg, coeff)
+function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg)
 % Single-feature log decision-variable response over all patch pairs,
 % dropping outliers below -25 (as in the original).
     m0 = cfg.norm.target_mean;
@@ -172,7 +171,7 @@ function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_
     n = 0;
     for i = 1:n_pairs
         p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
-        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3), coeff, psz);
+        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
         if is_edge
             a1 = vislab.lib.cntrst_norm(p1(:, :, 1), c0, psz);
             a2 = vislab.lib.cntrst_norm(p2(:, :, 1), c0, psz);

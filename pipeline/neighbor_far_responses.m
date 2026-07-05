@@ -1,6 +1,6 @@
-function R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coeff, dv, feature_list)
+function R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv, feature_list)
 % NEIGHBOR_FAR_RESPONSES  Content/border/mutual DVs for near and far patch pairs.
-%   R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coeff, dv, feature_list)
+%   R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv, feature_list)
 %
 %   For each reference patch (i,j) in the GTR image, forms two NEAR pairs (its
 %   lower and right neighbours) and two FAR pairs (randomly sampled beyond
@@ -13,7 +13,6 @@ function R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coe
 %     rho          - mutual-similarity matrix (segmentation.mutual_similarity).
 %     map          - szp x szp region-label map for this trial.
 %     bin_bounds,n_bins - histogram bounds (vislab.nat_stat_bayes.load_bin_bounds).
-%     coeff        - LMS->ABR rotation.
 %     dv           - struct of trained DV function handles: dv.h, dv.e, dv.c, dv.b (from quad2fun).
 %     feature_list - indicator vector of DV features to compute.
 %
@@ -72,11 +71,11 @@ function R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coe
     R = struct('rcn', rcn, 'rbn', rbn, 'rmn', rmn, 'rcf', rcf, 'rbf', rbf, 'rmf', rmf, ...
                'same_near', same_near, 'same_far', same_far, 'ncnt', ncnt);
 
-    % ---- nested helpers (share cfg/dv/bounds/coeff via the parent workspace) ----
+    % ---- nested helpers (share cfg/dv/bounds via the parent workspace) ----
     function p = prep(r, c)
         x = (r-1)*psz + 1; y = (c-1)*psz + 1;
         p = vislab.lib.ptch_norm(pimg(x:x+psz-1, y:y+psz-1, :), m0, c0, 3, 3);
-        p = vislab.nat_stat_bayes.apply_color_rotation(p, coeff, psz);
+        p = vislab.nat_stat_bayes.apply_color_rotation(p);   % shared LMS->ABR transform
     end
 
     function [rc, rb] = pair_cb(pa, pb, dir)

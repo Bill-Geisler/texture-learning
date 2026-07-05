@@ -66,3 +66,6 @@ finalized when stage 7 is implemented (blocked on the texture-dataset layout —
 ## External inputs (in `vislab_data/`, not in this repo)
 - `CPS natural images/Set{9,10,12}_16_*.png` — 16-bit calibrated natural images (stages 1–3).
 - `textures/{brodatz,fabric,pertex,…}/` — texture sheets for GTR images (stages 6–7).
+- `cps_rgb2lms.mat` (var `lms`, 3×3) — shared camera-RGB→LMS calibration; auto-loaded by `vislab.lib.rgb2lms`.
+- `cps_lms2abr_otf.mat` (var `coeff`, 3×3) — shared LMS→ABR rotation (stage-1 output); auto-loaded by
+  `vislab.nat_stat_bayes.apply_color_rotation`.

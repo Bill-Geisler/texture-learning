@@ -35,7 +35,7 @@ function s3_make_nearfar_pairs(cfg, ecc)
         if cfg.optics.apply
             img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        img = vislab.lib.rgb2lms(img, cfg.color.rgb_to_lms);
+        img = vislab.lib.rgb2lms(img);                % shared lab RGB->LMS calibration
         img = vislab.lib.downsample(img, ecc);
         [szx, szy, ~] = size(img);
         dcrit = szx / 4;                 % far-pair distance criterion

@@ -50,7 +50,7 @@ function s2_learn_feature_cdfs(cfg)
         if cfg.optics.apply
             img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
         end
-        img_lms = vislab.lib.rgb2lms(img, cfg.color.rgb_to_lms);
+        img_lms = vislab.lib.rgb2lms(img);            % shared lab RGB->LMS calibration
         [n_rows, n_cols, ~] = size(img_lms);
 
         for k = 1:nsmp

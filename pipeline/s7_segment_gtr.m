@@ -41,10 +41,7 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
     feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
     cstat        = zeros(1,20); cstat([1 5 6 7 9 10 11 13 14]) = 5;
 
-    % artifacts: rotation, bin bounds, trained DV handles (bc bound needed)
-    if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
-    tmp = load(fullfile(cfg.paths.models, cdf_file), 'coeff');
-    coeff = tmp.coeff;
+    % artifacts: bin bounds + trained DV handles (bc bound needed; LMS->ABR auto-loaded by apply_color_rotation)
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     dv = load_dv_handles(cfg, ecc, true);
 
@@ -78,11 +75,11 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
 
             % --- content similarity + mutual similarity ---
             phiall = segmentation.content_similarity_matrix(pimg, szp, psz, px, py, ...
-                coeff, bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
+                bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
             rho = segmentation.mutual_similarity(phiall);
 
             % --- 1. learn gcopt/wmopt from the self-supervised near/far task ---
-            R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, coeff, dv, feature_list);
+            R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv, feature_list);
             [qbs, qbd] = self_sup_decision(ss_method, R, dv);
             [~, ~, ~, pcnf] = nearfar_score_grid(qbs, qbd, R, gc_vec, wm_vec);
             [row_best, col_at] = max(pcnf, [], 2);   % best wm per gc
@@ -92,7 +89,7 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
 
             % --- 2. neighbour similarity + combined mu = phi + wmopt*rho ---
             [phi, dst] = segmentation.neighbor_similarity_matrix(pimg, szp, psz, px, py, ...
-                psz, coeff, bin_bounds, n_bins, feature_list, dv, cfg);
+                psz, bin_bounds, n_bins, feature_list, dv, cfg);
             mu = (phi + wmopt * rho) .* (phi ~= 0);  % combine only on neighbouring pairs
 
             % --- 3. group + score, swept over dgc x mc (x cc) ---

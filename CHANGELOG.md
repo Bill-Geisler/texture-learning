@@ -75,9 +75,10 @@ a re-verification would be needed to quantify their effect.
 - **Border DV `Rb` (`dv_border`): `/` → `./`.** Off-border energy is now the mean of element-wise log
   edge-energy ratios (Geisler: "probably should be ./ but was /"). Changes `dbndb`/`dbndbc`.
 - **Border+content DV order → `[content, border]`.** Geisler's fixed `bc_shft` uses `[content, border]`
-  ("order reversed"). The new code's DV *training* (s5) already used this order; the *evaluation*
-  (`self_sup_decision`) used `[border, content]` and was corrected to match. Affects the bc-bound
-  methods in s6/s7 (`bc_noshift`/`bc_shft`/`c_shft`).
+  ("order reversed"). The new code's DV *training* (s5) already used this order; the *evaluations*
+  (`self_sup_decision` and `segmentation.neighbor_similarity_matrix`) used `[border, content]` and were
+  corrected to match. Affects the bc-bound methods in s6/s7 (`bc_noshift`/`bc_shft`/`c_shft`) and the
+  neighbour similarity used for grouping.
 - **Isolated-patch guard (`assign_isolated_patches`): `i~=j` → `i1~=i0`.** Excludes the isolated patch
   by linear index (his fix), not row==col. Affects segmentation isolated-patch assignment.
 - **Power-suppression `b0`: content-similarity 10 → 16.** Geisler unified `mk_phi`'s `b0` to 16 (matching
