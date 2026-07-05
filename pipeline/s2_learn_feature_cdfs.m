@@ -64,7 +64,7 @@ function s2_learn_feature_cdfs(cfg)
             n_lms = n_lms + psz^2;
 
             % achromatic (A) channel in ABR space, contrast-normalized
-            abr = vislab.nat_stat_bayes.apply_color_rotation(patch, coeff, psz);
+            abr = vislab.nat_stat_bayes.apply_color_rotation(patch, coeff);
             a = vislab.lib.cntrst_norm(abr(:, :, 1), c0, psz);
 
             % 1st-derivative steerable responses (keep above-threshold)

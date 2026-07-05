@@ -170,7 +170,7 @@ function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_
     vals = zeros(n_pairs, 1);
     n = 0;
     for i = 1:n_pairs
-        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3), coeff, psz);
+        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3));
         p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
         if is_edge
             a1 = vislab.lib.cntrst_norm(p1(:, :, 1), c0, psz);
