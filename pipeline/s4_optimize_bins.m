@@ -6,8 +6,13 @@ function s4_optimize_bins(cfg, dim, lev)
 %   of feature `dim` (from stage 2) and the near/far patch pairs (stage 3),
 %   greedily splits histogram bins (adaptive histogram equalization): a split is
 %   kept if it reduces the proximity (near-vs-far) classification error by more
-%   than a criterion fraction. Saves the bin bounds to
-%   data/models/AHEO<btype><dim><lev>.mat (btype = 5 for natural images).
+%   than a criterion fraction. The learned bounds are stored in ONE consolidated
+%   file holding all features x eccentricity levels -- data/models/AHEO_bins.mat
+%   (optics applied) or AHE_bins.mat (no optics). Each call to this function
+%   updates the (dim, lev) slot of that file (read-modify-write). File structure:
+%     bin_bounds - cell [n_features x n_ecc], bin_bounds{f,e} = column of bin edges
+%     n_bins     - double [n_features x n_ecc], counts
+%     levels     - 1 x n_ecc eccentricity levels (columns); btype - 5 (natural).
 %
 %   Run `setup` first; run stages 2 (CDFs) and 3 (patch pairs for `lev`) before.
 %   Requires the IntClassNorm toolbox (classify_normals).
@@ -74,13 +79,42 @@ function s4_optimize_bins(cfg, dim, lev)
         end
     end
     nbnds = n_bins + 1;
-    bnds = bounds(:);                      % column, as the original saved
+    bnds = bounds(:);                      % column of bin edges for this (dim, lev)
 
-    % --- save bounds ---
-    if cfg.optics.apply, prefix = 'AHEO'; else, prefix = 'AHE'; end
-    out_path = fullfile(cfg.paths.models, sprintf('%s%d%d%d.mat', prefix, btype, dim, lev));
-    save(out_path, 'bnds', 'nbnds');
-    fprintf('s4: dim %d lev %d -> %d bounds; saved %s\n', dim, lev, nbnds, out_path);
+    % --- store into the consolidated bin-bounds file (one file for all features x
+    %     eccentricity levels; see load_bin_bounds for the exact structure). Each
+    %     call updates just the (dim, lev) slot: read the file if it exists, set the
+    %     slot, write back. (Sequential pipeline, so no read/write race.)
+    if cfg.optics.apply, file = 'AHEO_bins.mat'; else, file = 'AHE_bins.mat'; end
+    out_path = fullfile(cfg.paths.models, file);
+    [bin_bounds, n_bins_all, levels] = load_or_init_bounds(out_path);
+    ecc = find(levels == lev, 1);
+    if isempty(ecc)
+        levels(end+1) = lev;               % new eccentricity column
+        ecc = numel(levels);
+    end
+    bin_bounds{dim, ecc} = bnds;
+    n_bins_all(dim, ecc) = nbnds;
+    out = struct('bin_bounds', {bin_bounds}, 'n_bins', n_bins_all, 'levels', levels, 'btype', btype);
+    save(out_path, '-struct', 'out');
+    fprintf('s4: dim %d lev %d -> %d bounds; updated %s\n', dim, lev, nbnds, out_path);
+end
+
+% ------------------------------------------------------------------------------
+function [bin_bounds, n_bins_all, levels] = load_or_init_bounds(out_path)
+% Load the consolidated bounds file if it exists, else initialize empty containers
+% (rows indexed by paper feature number 1..14; columns grow as levels are added).
+    n_features = 14;
+    if isfile(out_path)
+        S = load(out_path, 'bin_bounds', 'n_bins', 'levels');
+        bin_bounds = S.bin_bounds;
+        n_bins_all = S.n_bins;
+        levels     = S.levels;
+    else
+        bin_bounds = cell(n_features, 0);
+        n_bins_all = zeros(n_features, 0);
+        levels     = [];
+    end
 end
 
 % ------------------------------------------------------------------------------

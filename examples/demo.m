@@ -23,7 +23,7 @@ cfg = config;
 
 % --- 1. check the shipped trained artifacts are present ---
 needed = {'PCA_matrix_3_OTF.mat', 'cdfs_abr_mo13_mo23_cs33_otf.mat', ...
-          'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO511.mat'};
+          'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO_bins.mat'};
 present = cellfun(@(f) exist(fullfile(cfg.paths.models, f), 'file') > 0, needed);
 if ~all(present)
     error('demo:missingArtifacts', ...
