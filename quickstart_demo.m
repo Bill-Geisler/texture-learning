@@ -14,12 +14,12 @@
 %
 %   For convenience, this demo defaults to skipping stages 1-5 and uses the SHIPPED 
 %   trained model in data/models to directly run the self-supervised 
-%   texture-discrimination stage (s6) on Brodatz grown-texture-region (GTR) images.
-%   It then prints and plots the resulting near-far / same-different accuracy surface 
-%   (cf. the paper's Fig. 4). All six texture datasets (Pertex, Fabric, Brodatz, VisTex, McGill) 
-%   are supported; each just needs its sheets present in vislab-common/data/textures.
+%   texture-discrimination stage (s6) and segmentation stage (s7) on 
+%   "Grown-Texture-Region" (GTR) images. GTR images are constructed by growing 
+%   random regions and filling them with source textures from datasets like Brodatz.
+%   All six texture datasets (Pertex, Fabric, Brodatz, VisTex, McGill) are supported.
 %
-%   To run stages 1-5, set `run_training_stages = true` below.
+%   To re-run the expensive training stages 1-5, set `run_training_stages = true` below.
 
 % --- locate the repo and set up the path ---
 repo_root = fileparts(mfilename('fullpath'));
@@ -28,15 +28,19 @@ setup;
 cfg = config;
 
 % --- 0. (Optional) Run Pipeline Stages 1-5: Training the Model ---
-run_training_stages = true; % Set to true to re-train the model from scratch
+run_training_stages = false; % Set to true to re-train the model from scratch
 
 if run_training_stages
     fprintf('\n--- Running Pipeline Stages 1-5: Training the Model ---\n');
     fprintf('Note: This requires the calibrated natural images in vislab-common/data.\n\n');
     
     % Stage 1: Learn Color Transform (Decorrelation)
-    % Consistent with early visual processing (and optimal encoding), we first transform 
-    % the color axes (LMS to ABR) so the joint distribution of features has small correlations.
+    % First, the raw RGB camera sensor responses are converted into LMS cone responses. 
+    % This initial RGB-to-LMS transform uses a fixed matrix calibrated to the specific 
+    % camera used to capture the natural image dataset.
+    % Next, consistent with early visual processing (and optimal encoding), we transform 
+    % the LMS axes to an ABR (Achromatic, Blue-yellow, Red-green) space so the joint 
+    % distribution of features has minimal correlation.
     fprintf('-> Running Stage 1: s1_learn_color_transform...\n');
     s1_learn_color_transform(cfg);
 
@@ -74,53 +78,369 @@ if run_training_stages
     
     fprintf('Training complete! Models saved to data/models/\n\n');
 else
-    fprintf('\nSkipping Stages 1-5 (Training). Using the pre-built shipped model.\n');
+    fprintf('\nSkipping Stages 1-5 (Training). Using the pre-built shipped models.\n');
 end
+
+% --- PLOTTING STAGES 1-5 ---
+fprintf('\n--- Generating Illustrative Plots for Stages 1-5 ---\n');
+ecc = 1;
+plot_stage1(cfg);
+plot_stage2(cfg);
+plot_stage3(cfg, ecc);
+plot_stage4(cfg, ecc);
+plot_stage5(cfg, ecc);
+drawnow;
 
 % --- 1. check the shipped (or newly trained) artifacts are present ---
 needed = {'cdfs_abr_mo13_mo23_cs33_otf.mat', ...
           'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO_bins.mat'};
-% (the LMS->ABR transform now lives in the shared vislab-common/data/cps_lms2abr_otf.mat;
-%  the demo reads its rotation from the cdfs file, so it isn't checked here.)
 present = cellfun(@(f) exist(fullfile(cfg.paths.models, f), 'file') > 0, needed);
 if ~all(present)
     error('demo:missingArtifacts', ...
         ['Missing trained artifacts in data/models: %s\n' ...
-         'Run pipeline stages s1-s5 first (see README), or restore data/models.'], ...
+         'Run pipeline stages s1-s5 first by setting run_training_stages=true, or restore data/models.'], ...
         strjoin(needed(~present), ', '));
 end
-fprintf('Trained model found in %s\n', cfg.paths.models);
+fprintf('Trained model artifacts found in %s\n', cfg.paths.models);
 
-% --- 2. run the self-supervised discrimination stage on Brodatz ---
+% --- 2. run the self-supervised discrimination stage (s6) on GTR images ---
 method = 'bc';    % per-image retraining of the border+content bound (paper: NCB)
-itype  = 3;       % 3 = Brodatz (data present in vislab-common/data/textures/brodatz)
-ecc    = 1;       % foveal
+itype  = 3;       % 3 = Brodatz (source textures)
 ntrl   = 2;       % GTR images to average over (small, for a quick demo)
 
-fprintf('\nRunning s6 discrimination: method=%s, Brodatz, %d trial(s).\n', method, ntrl);
+fprintf('\n--- Stage 6: Self-Supervised Discrimination ---\n');
+fprintf('Applying the decision variables learned from natural images (Stages 1-5)\n');
+fprintf('to GTR (grown-texture-region) images built from Brodatz source textures.\n');
+fprintf('Method: %s, Dataset: Brodatz, Trials: %d.\n', method, ntrl);
 fprintf('(Builds GTR images and computes all pairwise similarities -- takes a few minutes.)\n');
 try
-    out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl);
+    out6 = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl);
 catch err
     if contains(err.identifier, 'datasetMissing')
         error('demo:noTextureData', ...
             ['Brodatz texture sheets are not available/readable in %s.\n' ...
-             'Ensure vislab-common/data/textures/brodatz/B*.gif are downloaded locally (see USER_TODO.md).'], ...
+             'Ensure vislab-common/data/textures/brodatz/B*.gif are downloaded locally.'], ...
             cfg.paths.textures);
     else
         rethrow(err);
     end
 end
 
-% --- 3. report and plot the result ---
-[best, idx] = max(out.pcav, [], 'all', 'linear');
-[gi, wi] = ind2sub(size(out.pcav), idx);
-fprintf('\nResult: peak mean near-far accuracy = %.1f%%\n', 100 * best);
-fprintf('        at criterion = %.2f, mutual-similarity weight = %.2f\n', out.gc(gi), out.wm(wi));
+[best, idx] = max(out6.pcav, [], 'all', 'linear');
+[gi, wi] = ind2sub(size(out6.pcav), idx);
+fprintf('\nStage 6 Result: peak mean near-far accuracy = %.1f%%\n', 100 * best);
+fprintf('        at criterion = %.2f, mutual-similarity weight = %.2f\n', out6.gc(gi), out6.wm(wi));
+plot_stage6(out6, method);
+drawnow;
 
-figure('Name', 'texture-learning demo');
-imagesc(out.wm, out.gc, out.pcav); axis xy; colorbar; clim([0.5 1]);
-xlabel('mutual similarity weight');
-ylabel('grouping criterion');
-title(sprintf('Near-far discrimination accuracy (%s, Brodatz)', method));
-fprintf('\nDone. The figure shows accuracy across the criterion x mutual-weight grid.\n');
+% --- 3. run the segmentation stage (s7) on GTR images ---
+fprintf('\n--- Stage 7: GTR Segmentation ---\n');
+fprintf('Using the grouping criterion and mutual-similarity weight learned in Stage 6,\n');
+fprintf('we now perform the actual region grouping and segmentation of the GTR images.\n');
+try
+    out7 = s7_segment_gtr(cfg, 'ncb', itype, ecc, ntrl);
+catch err
+    rethrow(err);
+end
+
+[best, idx] = max(out7.nregs5_ave, [], 'all', 'linear');
+[ki, li] = ind2sub(size(out7.nregs5_ave), idx);
+fprintf('\nStage 7 Result: peak fully-correct regions = %.1f%%\n', 100 * best);
+fprintf('        at merge = %.2f, dgc = %.2f\n', out7.mc(ki), out7.dgc(li));
+plot_stage7(cfg, out7, 'ncb', itype, ecc);
+fprintf('\nDemo Complete! Check the generated figure windows.\n');
+
+
+% =========================================================================
+% HELPER PLOTTING FUNCTIONS
+% =========================================================================
+
+function plot_stage1(cfg)
+    try
+        % Load a natural image from the dataset for illustration
+        img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
+        if isfile(img_path)
+            img = double(imread(img_path));
+        else
+            img = double(imread('peppers.png')); % fallback
+        end
+    catch
+        fprintf('Could not load natural image for Stage 1 plot.\n');
+        return;
+    end
+    % 1. RGB to LMS
+    % In the actual pipeline, this initial RGB-to-LMS transform uses a fixed calibration 
+    % matrix specific to the camera that took the natural images. Here we use an 
+    % approximate linear mapping to illustrate the concept on a standard test image.
+    img_lms = vislab.lib.rgb2lms(img);
+    
+    % load coeff
+    if cfg.optics.apply, fname = 'cps_lms2abr_otf.mat'; else, fname = 'cps_lms2abr.mat'; end
+    s = load(fullfile(cfg.paths.data_root, fname), 'coeff');
+    coeff = s.coeff;
+    
+    % sample pixels
+    pts = reshape(img, [], 3);
+    pts = pts(1:100:end, :); % downsample for scatter speed
+    lms_pts = reshape(img_lms, [], 3);
+    lms_pts = lms_pts(1:100:end, :);
+    abr_pts = lms_pts * coeff;
+    
+    figure('Name', 'Stage 1: Color Transforms (RGB -> LMS -> ABR)', 'Position', [100 100 1200 800]);
+    
+    subplot(2, 3, 1:3);
+    image((img / max(img(:))).^(1/2.2)); axis image off;
+    title('Source Image (Gamma Corrected)');
+    
+    subplot(2, 3, 4); scatter3(pts(:,1), pts(:,2), pts(:,3), 10, 'k', '.'); 
+    title('1. RGB Space'); xlabel('R'); ylabel('G'); zlabel('B');
+    
+    subplot(2, 3, 5); scatter3(lms_pts(:,1), lms_pts(:,2), lms_pts(:,3), 10, 'k', '.'); 
+    title('2. LMS Cone Space'); xlabel('L'); ylabel('M'); zlabel('S');
+    
+    subplot(2, 3, 6); scatter3(abr_pts(:,1), abr_pts(:,2), abr_pts(:,3), 10, 'k', '.'); 
+    title('3. ABR (Decorrelated) Space'); xlabel('A'); ylabel('B'); zlabel('R');
+end
+
+function plot_stage2(cfg)
+    if cfg.optics.apply, out_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
+    out_path = fullfile(cfg.paths.models, out_file);
+    if ~isfile(out_path), return; end
+    cdfs = load(out_path);
+    
+    figure('Name', 'Stage 2: Feature Extraction (CDFs)', 'Position', [200 200 400 800]);
+    
+    subplot(3,1,1); plot(cdfs.ea(1:end-1), cdfs.Na, 'LineWidth', 2); ylim([0 1]);
+    title('Achromatic Channel CDF'); xlabel('Feature Value'); ylabel('Cumulative Prob');
+    
+    subplot(3,1,2); plot(cdfs.em(1:end-1), cdfs.Nm, 'LineWidth', 2); ylim([0 1]);
+    title('1st Deriv Magnitude CDF'); xlabel('Feature Value'); ylabel('Cumulative Prob');
+    
+    subplot(3,1,3); plot(cdfs.ecs1(1:end-1), cdfs.Ncs1, 'LineWidth', 2); ylim([0 1]);
+    title('Center-Surround (Small) CDF'); xlabel('Feature Value'); ylabel('Cumulative Prob');
+end
+
+function plot_stage3(cfg, ecc)
+    out_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
+    
+    n_show = 5;
+    near_pairs = cell(n_show, 2);
+    far_pairs = cell(n_show, 2);
+    
+    if ~isfile(out_path)
+        % patch_pairs_1.mat is missing. Synthesize from natural image.
+        img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
+        if isfile(img_path)
+            img = double(rgb2gray(imread(img_path)));
+        else
+            img = double(rgb2gray(imread('peppers.png')));
+        end
+        psz = cfg.patch.size / ecc;
+        for i = 1:n_show
+            r1 = randi(size(img,1) - psz); c1 = randi(size(img,2) - 2*psz);
+            near_pairs{i, 1} = img(r1:r1+psz-1, c1:c1+psz-1);
+            near_pairs{i, 2} = img(r1:r1+psz-1, c1+psz:c1+2*psz-1);
+            
+            r2 = randi(size(img,1) - psz); c2a = randi(size(img,2) - psz); c2b = randi(size(img,2) - psz);
+            far_pairs{i, 1} = img(r2:r2+psz-1, c2a:c2a+psz-1);
+            far_pairs{i, 2} = img(r2:r2+psz-1, c2b:c2b+psz-1);
+        end
+    else
+        pp = load(out_path, 'ptchn', 'ptchf');
+        n_show = min(5, size(pp.ptchn, 4));
+        psz = size(pp.ptchn, 1);
+        for i = 1:n_show
+            near_pairs{i, 1} = pp.ptchn(:, 1:psz, 1, i);
+            near_pairs{i, 2} = pp.ptchn(:, psz+1:2*psz, 1, i);
+            far_pairs{i, 1}  = pp.ptchf(:, 1:psz, 1, i);
+            far_pairs{i, 2}  = pp.ptchf(:, psz+1:2*psz, 1, i);
+        end
+    end
+    
+    figure('Name', 'Stage 3: Near/Far Pairs', 'Position', [200 200 400 800]);
+    
+    for i = 1:n_show
+        % Near pair (column 1)
+        subplot(n_show, 2, (i-1)*2 + 1);
+        pair_n = double([near_pairs{i, 1}, zeros(size(near_pairs{i,1},1), 2), near_pairs{i, 2}]);
+        pair_n = pair_n - min(pair_n(:)); pair_n = pair_n / max(eps, max(pair_n(:)));
+        imagesc(pair_n.^(1/2.2)); colormap gray; axis image off;
+        if i == 1, title('Near Pairs'); end
+        
+        % Far pair (column 2)
+        subplot(n_show, 2, (i-1)*2 + 2);
+        pair_f = double([far_pairs{i, 1}, zeros(size(far_pairs{i,1},1), 2), far_pairs{i, 2}]);
+        pair_f = pair_f - min(pair_f(:)); pair_f = pair_f / max(eps, max(pair_f(:)));
+        imagesc(pair_f.^(1/2.2)); colormap gray; axis image off;
+        if i == 1, title('Far Pairs'); end
+    end
+end
+
+function plot_stage4(cfg, ecc)
+    if cfg.optics.apply, file = 'AHEO_bins.mat'; else, file = 'AHE_bins.mat'; end
+    out_path = fullfile(cfg.paths.models, file);
+    if ~isfile(out_path), return; end
+    S = load(out_path);
+    ecc_idx = find(S.eccs == ecc, 1);
+    
+    if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
+    cdfs = load(fullfile(cfg.paths.models, cdf_file));
+    
+    figure('Name', 'Stage 4: Adaptive Histogram Binning', 'Position', [200 200 400 800]);
+    
+    % Dim 1
+    subplot(2,1,1);
+    bnds1 = S.bin_bounds{1, ecc_idx};
+    plot(cdfs.ea(1:end-1), cdfs.Na, 'LineWidth', 2); hold on; ylim([0 1]);
+    for b = bnds1', xline(b, 'k-', 'LineWidth', 0.5); end
+    title('Achromatic CDF & Adaptive Bins');
+    xlim([bnds1(1) bnds1(end)]); xlabel('Feature Value'); ylabel('Cumulative Prob');
+    
+    % Dim 5
+    subplot(2,1,2);
+    bnds5 = S.bin_bounds{5, ecc_idx};
+    plot(cdfs.em(1:end-1), cdfs.Nm, 'LineWidth', 2); hold on; ylim([0 1]);
+    for b = bnds5', xline(b, 'k-', 'LineWidth', 0.5); end
+    title('Edge Mag CDF & Adaptive Bins');
+    xlim([bnds5(1) bnds5(end)]); xlabel('Feature Value'); ylabel('Cumulative Prob');
+end
+
+function plot_stage5(cfg, ecc)
+    tag = num2str(ecc);
+    bc_path = fullfile(cfg.paths.models, ['dbndbcNO' tag '.mat']);
+    if ~isfile(bc_path), return; end
+    dbndbc = load(bc_path);
+    
+    dvbc = quad2fun(dbndbc.dbndbc, 0);
+    [X, Y] = meshgrid(linspace(-5, 5, 100), linspace(-5, 5, 100));
+    Z = zeros(size(X));
+    for i=1:numel(X)
+        Z(i) = dvbc([X(i); Y(i)]);
+    end
+    
+    % Synthesize some proxy points to illustrate the distribution
+    rng(42); n_pts = 300;
+    % Same texture (positive DVs)
+    same_c = 1.5 + randn(n_pts,1)*1.5;
+    same_b = 1.5 + randn(n_pts,1)*1.5;
+    % Diff texture (negative DVs)
+    diff_c = -1.5 + randn(n_pts,1)*1.5;
+    diff_b = -1.5 + randn(n_pts,1)*1.5;
+    
+    figure('Name', 'Stage 5: Decision Variables & Boundaries', 'Position', [200 200 1200 400]);
+    
+    % 1D Histograms
+    subplot(1,3,1); hold on;
+    histogram(diff_c, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(same_c, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    title('Content DV Distribution (Proxy)'); xlabel('Content DV'); ylabel('Prob Density');
+    legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+    
+    subplot(1,3,2); hold on;
+    histogram(diff_b, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(same_b, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    title('Border DV Distribution (Proxy)'); xlabel('Border DV'); ylabel('Prob Density');
+    legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+    
+    % 2D Boundary
+    subplot(1,3,3);
+    imagesc(linspace(-5,5,100), linspace(-5,5,100), Z); axis xy; hold on;
+    contour(X, Y, Z, [0 0], 'k', 'LineWidth', 2);
+    try
+        cb = colorbarpzn(min(Z(:)), max(Z(:))); 
+        cb.Label.String = 'Decision Variable Value';
+    catch
+        cb = colorbar; 
+        cb.Label.String = 'Decision Variable Value';
+    end
+    % Plot synthetic points
+    scatter(diff_c, diff_b, 10, 'b', 'filled', 'MarkerEdgeColor', 'w', 'LineWidth', 0.5);
+    scatter(same_c, same_b, 10, 'r', 'filled', 'MarkerEdgeColor', 'w', 'LineWidth', 0.5);
+    title('Border+Content DV Boundary');
+    xlabel('Content DV'); ylabel('Border DV');
+end
+
+function plot_stage6(out, method)
+    figure('Name', 'Stage 6: Near/Far Self-Supervised Performance', 'Position', [400 400 600 500]);
+    imagesc(out.wm, out.gc, out.pcav); axis xy;
+    cb = colorbar; cb.Label.String = 'Near-Far Accuracy';
+    xlabel('Mutual Similarity Weight');
+    ylabel('Grouping Criterion');
+    title(sprintf('Near-far Discrimination Accuracy (%s, Dataset %d)', method, out.itype));
+end
+
+function plot_stage7(cfg, out, method, itype, ecc)
+    fprintf('Generating a sample GTR image and segmenting it for visual output...\n');
+    
+    [~, idx] = max(out.nregs5_ave, [], 'all', 'linear');
+    [ki, li] = ind2sub(size(out.nregs5_ave), idx);
+    mc_opt = out.mc(ki);
+    dgc_opt = out.dgc(li);
+    
+    szp = cfg.gtr.szp;
+    psz = cfg.patch.size / ecc;
+    ntexr = cfg.gtr.n_regions;
+    
+    feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
+    cstat = zeros(1,20); cstat([1 5 6 7 9 10 11 13 14]) = 5;
+    [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, 1, double(cfg.optics.apply));
+    dv = load_dv_handles(cfg, ecc, true);
+    [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc);
+    
+    figure('Name', 'Stage 7: Segmentation Result', 'Position', [400 200 1200 800]);
+    
+    ss_method = struct('nc', 'c_shft', 'ncb', 'bc_noshift').(method);
+    
+    n_examples = 3;
+    for ex = 1:n_examples
+        texs = gtr.sample_texture_ids(nimg, ntexr, 1);
+        [~, map3] = gtr.grow_region_masks(szp, ntexr, 1, cfg.gtr.seed_radius, cfg.gtr.coverage);
+        map = map3(:, :, 1);
+        [pimg, px, py] = make_gtr_image(cfg, imgr, imgg, imgb, texs(1,:), map);
+        
+        phiall = segmentation.content_similarity_matrix(pimg, szp, psz, px, py, bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
+        rho = segmentation.mutual_similarity(phiall);
+        
+        R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv, feature_list);
+        [qbs, qbd] = self_sup_decision(ss_method, R, dv);
+        gc_vec = 0:0.8:8; wm_vec = 0:0.8:9.6;
+        [~, ~, ~, pcnf] = nearfar_score_grid(qbs, qbd, R, gc_vec, wm_vec);
+        [row_best, col_at] = max(pcnf, [], 2);
+        [~, J] = max(row_best);
+        gcopt = gc_vec(J); wmopt = wm_vec(col_at(J));
+        
+        [phi, dst] = segmentation.neighbor_similarity_matrix(pimg, szp, psz, px, py, psz, bin_bounds, n_bins, feature_list, dv, cfg);
+        mu = (phi + wmopt * rho) .* (phi ~= 0);
+        
+        cc_opt = 1.1;
+        [~, ~, groups2d] = segmentation.group_patches(mu, dst, szp, gcopt + dgc_opt, cc_opt, psz, px, py, phiall, mc_opt);
+        
+        % Use mean across channels to ensure a pure grayscale base image
+        pimg_gray = mean(double(pimg), 3);
+        pimg_norm = pimg_gray - min(pimg_gray(:));
+        pimg_norm = pimg_norm / max(pimg_norm(:));
+        pimg_rgb = repmat(pimg_norm, [1 1 3]);
+        
+        % Upsample maps to image resolution
+        map_up = imresize(map, [size(pimg,1), size(pimg,2)], 'nearest');
+        groups_up = imresize(groups2d, [size(pimg,1), size(pimg,2)], 'nearest');
+        
+        subplot(n_examples, 3, (ex-1)*3 + 1); 
+        image(pimg_rgb); axis image off; 
+        if ex == 1, title('Raw GTR Image'); end
+        
+        subplot(n_examples, 3, (ex-1)*3 + 2); 
+        image(pimg_rgb); axis image off; hold on;
+        h = imagesc(map_up); colormap(gca, 'jet');
+        set(h, 'AlphaData', 0.4);
+        if ex == 1, title('Ground Truth Regions'); end
+        
+        subplot(n_examples, 3, (ex-1)*3 + 3); 
+        image(pimg_rgb); axis image off; hold on;
+        h2 = imagesc(groups_up); colormap(gca, 'jet');
+        set(h2, 'AlphaData', 0.4);
+        if ex == 1, title('Segmented Output'); end
+        
+        drawnow; % update UI
+    end
+end

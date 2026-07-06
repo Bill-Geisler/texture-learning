@@ -50,14 +50,14 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | 3 | `s3_make_nearfar_pairs(cfg, ecc)` | `patch_pairs_<ecc>.mat` — near/far training pairs |
 | 4 | `s4_optimize_bins(cfg, dim, ecc)` | `AHEO<btype><dim><ecc>.mat` — adaptive histogram bins |
 | 5 | `s5_train_decision_vars(cfg, ecc)` | `dbnd{h,e,c,b,bc}NO<ecc>.mat` — trained decision-variable bounds |
-| 6 | `s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
+| 6 | `s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on GTR images built from Brodatz/Fabric source textures — see Quick demo) |
 | 7 | `s7_segment_gtr(cfg, method, itype, ecc, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
 ## Quick demo
 
-The `quickstart_demo.m` script demonstrates the full pipeline. To see the trained model produce results without re-running the (expensive) training, the demo uses the shipped model in `data/models` by default to immediately run self-supervised discrimination (stage s6) on Brodatz GTR images and plot the near-far accuracy surface (cf. the paper's Fig. 4). 
+The `quickstart_demo.m` script demonstrates the full pipeline. To see the trained model produce results without re-running the (expensive) training, the demo uses the shipped model in `data/models` by default to immediately run self-supervised discrimination (stage s6) and segmentation (stage s7) on "Grown-Texture-Region" (GTR) images. These GTR images are artificially constructed by growing random regions and filling them with source textures from datasets like Brodatz. The script will plot the near-far accuracy surface and the final segmentation results (cf. the paper's Fig. 4 and Fig. 7). 
 
-The demo script also contains the commented code to run stages 1-5 if you wish to re-train the model from scratch (requires the calibrated natural images).
+The demo script also contains the commented code to run stages 1-5 if you wish to re-train the model from scratch (requires the calibrated natural images), and will generate illustrative plots for every stage either way.
 
 ```matlab
 run('quickstart_demo.m')      % sets up the path, runs s6 on Brodatz, prints + plots the result
