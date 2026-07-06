@@ -23,11 +23,12 @@ for the HBO model this builds on.
 - **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
   **[gx2](https://github.com/abhranildas/gx2)** — installed MATLAB **add-on toolboxes** (Add-On Explorer /
   File Exchange). `setup.m` verifies they're installed; they are *not* bundled or fetched as source.
-- **vislab-common/data** — the shared data store (~23 GB: calibrated natural images + texture sheets), a sibling
-  folder alongside this repo. Unlike vislab it is **too large to auto-download**, so obtain it
-  separately and place it next to the repo (`setup.m` warns if it's missing; edit `cfg.paths.data_root` if
-  it's elsewhere). The shipped model + Brodatz sheets cover the demo; the full natural-image set is only
-  needed to retrain (s1–s5) from scratch.
+- **vislab-common/data** — the shared data store, a sibling folder alongside this repo. Its texture sheets
+  and colour transforms ship inside the `vislab-common` repo (so `setup.m`'s auto-clone brings them along);
+  only the large calibrated **natural-image** set (~19 GB) is **too large for GitHub** and must be obtained
+  separately (`setup.m` warns if the store is missing; edit `cfg.paths.data_root` if it's elsewhere). The
+  shipped model + the in-repo texture sheets cover the demo; the natural images are only needed to retrain
+  (s1–s5) from scratch.
 - MATLAB with the Image Processing and Statistics & Machine Learning toolboxes.
 
 ## Setup
@@ -74,8 +75,8 @@ run('examples/demo.m')      % sets up the path, runs s6 on Brodatz, prints + plo
 
 It reports the peak accuracy and shows the accuracy surface over the grouping-criterion x
 mutual-similarity-weight grid. Expect a few minutes (it builds GTR images and computes all pairwise
-patch similarities). Requires the Brodatz sheets in `vislab-common/data/textures/brodatz/`; other texture
-datasets need additional data (see `../USER_TODO.md`).
+patch similarities). The Brodatz sheets (and every other texture dataset) ship in the `vislab-common` repo
+under `vislab-common/data/textures/`, so no extra download is needed for the demo.
 
 ## Repository layout
 
