@@ -53,24 +53,14 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | 6 | `s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on Brodatz/Fabric — see Quick demo) |
 | 7 | `s7_segment_gtr(cfg, method, itype, ecc, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
-Example (regenerate the eccentricity 1 (=fovea) model):
-```matlab
-setup; cfg = config;
-s1_learn_color_transform(cfg);
-s2_learn_feature_cdfs(cfg);
-s3_make_nearfar_pairs(cfg, 1);
-for dim = [1 5 6 7 9 10 11 13 14], s4_optimize_bins(cfg, dim, 1); end
-s5_train_decision_vars(cfg, 1);
-```
-
 ## Quick demo
 
-To see the trained model produce results without re-running the (expensive) training, run the demo. It
-uses the shipped model in `data/models` to run self-supervised discrimination (stage s6) on Brodatz GTR
-images and plots the near-far accuracy surface (cf. the paper's Fig. 4):
+The `quickstart_demo.m` script demonstrates the full pipeline. To see the trained model produce results without re-running the (expensive) training, the demo uses the shipped model in `data/models` by default to immediately run self-supervised discrimination (stage s6) on Brodatz GTR images and plot the near-far accuracy surface (cf. the paper's Fig. 4). 
+
+The demo script also contains the commented code to run stages 1-5 if you wish to re-train the model from scratch (requires the calibrated natural images).
 
 ```matlab
-run('examples/demo.m')      % sets up the path, runs s6 on Brodatz, prints + plots the result
+run('quickstart_demo.m')      % sets up the path, runs s6 on Brodatz, prints + plots the result
 ```
 
 It reports the peak accuracy and shows the accuracy surface over the grouping-criterion x
@@ -93,14 +83,6 @@ texture-learning/
 
 Shared low-level code lives in `vislab` (not here), so it isn't duplicated across the lab's repos.
 
-## Status & caveats
-
-- Pipeline **stages 1–7 are all implemented**. Stages 6–7 run end-to-end on all six texture
-  datasets (Pertex, Fabric, Brodatz, Brodatz+Fabric, VisTex, McGill). Pertex source PNGs are
-  1024×1024 and are resized to 640 on load, reproducing exactly the sheets used originally.
-- During the reorganization several bugs were fixed (e.g. an optics double-mean, a center-surround CDF
-  mix-up); re-running therefore differs slightly from the original preprint artifacts, which should be
-  regenerated. Details in `../REORGANIZATION_PLAN.md` and (once verified) `CHANGELOG.md`.
 
 ## Documentation
 
