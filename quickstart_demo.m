@@ -84,10 +84,15 @@ end
 % --- PLOTTING STAGES 1-5 ---
 fprintf('\n--- Generating Illustrative Plots for Stages 1-5 ---\n');
 ecc = 1;
-plot_stage1(cfg);
-plot_stage2(cfg, ecc);
-plot_stage3(cfg, ecc);
-plot_stage5(cfg, ecc);
+    plot_stage1(cfg);
+    plot_stage2(cfg, ecc);
+    plot_stage3(cfg, ecc);
+    
+    fprintf('\n--- Computing true patch responses for Stage 5 Demo (n=150) ---\n');
+    [R_near, R_far] = compute_demo_responses(cfg, ecc);
+    
+    plot_stage5_intermediate(cfg, ecc, R_near, R_far);
+    plot_stage5(cfg, ecc, R_near, R_far);
 drawnow;
 
 % --- 1. check the shipped (or newly trained) artifacts are present ---
@@ -331,29 +336,97 @@ function plot_stage3(cfg, ecc)
     end
 end
 
-
-
-function plot_stage5(cfg, ecc)
+function plot_stage5_intermediate(cfg, ecc, R_near, R_far)
+    if isempty(R_near), return; end
     tag = num2str(ecc);
-    bc_path = fullfile(cfg.paths.models, ['dbndbcNO' tag '.mat']);
-    if ~isfile(bc_path), return; end
-    dbndbc = load(bc_path);
+    out_path = fullfile(cfg.paths.models, ['dbndhNO' tag '.mat']);
+    if ~isfile(out_path), return; end
     
-    dvbc = quad2fun(dbndbc.dbndbc, 0);
-    [X, Y] = meshgrid(linspace(-5, 5, 100), linspace(-5, 5, 100));
-    Z = zeros(size(X));
-    for i=1:numel(X)
-        Z(i) = dvbc([X(i); Y(i)]);
+    S = load(out_path);
+    dbndh = S.dbndh;
+    dvh = quad2fun(dbndh, 0);
+    
+    % True component LLRs (3D: spots)
+    near_pts = R_near(:, 1:3);
+    far_pts  = R_far(:, 1:3);
+    
+    figure('Name', 'Intermediate Stage 5: Spot DV Construction', 'Position', [150 150 600 800]);
+    
+    % --- 3D Scatter & Boundary ---
+    subplot(2,1,1); hold on;
+    scatter3(far_pts(:,1), far_pts(:,2), far_pts(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'w', 'MarkerFaceAlpha', 0.6);
+    scatter3(near_pts(:,1), near_pts(:,2), near_pts(:,3), 15, 'r', 'filled', 'MarkerEdgeColor', 'w', 'MarkerFaceAlpha', 0.6);
+    
+    % Compute 3D boundary isosurface
+    [X, Y, Z] = meshgrid(linspace(-5, 5, 20), linspace(-5, 5, 20), linspace(-5, 5, 20));
+    V = zeros(size(X));
+    for i = 1:numel(X)
+        V(i) = dvh([X(i); Y(i); Z(i)]);
     end
     
-    % Synthesize some proxy points to illustrate the distribution
-    rng(42); n_pts = 300;
-    % Same texture (positive DVs)
-    same_c = 1.5 + randn(n_pts,1)*1.5;
-    same_b = 1.5 + randn(n_pts,1)*1.5;
-    % Diff texture (negative DVs)
-    diff_c = -1.5 + randn(n_pts,1)*1.5;
-    diff_b = -1.5 + randn(n_pts,1)*1.5;
+    fv = isosurface(X, Y, Z, V, 0);
+    if ~isempty(fv.vertices)
+        p = patch('Faces', fv.faces, 'Vertices', fv.vertices);
+        p.FaceColor = 'k';
+        p.EdgeColor = 'none';
+        p.FaceAlpha = 0.2;
+        camlight; lighting gouraud;
+    end
+    
+    view(3); grid on;
+    title('3D Spot Feature Space (Achromatic, CS-Small, CS-Large)');
+    xlabel('LLR Achromatic'); ylabel('LLR CS-Small'); zlabel('LLR CS-Large');
+    legend('Far Pairs', 'Near Pairs', 'Decision Boundary', 'Location', 'best');
+    
+    % --- 1D Combined Distribution ---
+    subplot(2,1,2); hold on;
+    near_dv = apply_dv(dvh, near_pts);
+    far_dv = apply_dv(dvh, far_pts);
+    
+    histogram(far_dv, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(near_dv, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    title('Combined Spot DV (1D Output of Quadratic SVM)');
+    xlabel('Spot DV Value'); ylabel('Probability Density');
+    legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+end
+
+function plot_stage5(cfg, ecc, R_near, R_far)
+    if isempty(R_near), return; end
+    tag = num2str(ecc);
+    
+    % Load all necessary bounds
+    try
+        dbndh = load(fullfile(cfg.paths.models, ['dbndhNO' tag '.mat'])); dbndh = dbndh.dbndh;
+        dbnde = load(fullfile(cfg.paths.models, ['dbndeNO' tag '.mat'])); dbnde = dbnde.dbnde;
+        dbndc = load(fullfile(cfg.paths.models, ['dbndcNO' tag '.mat'])); dbndc = dbndc.dbndc;
+        dbndb = load(fullfile(cfg.paths.models, ['dbndbNO' tag '.mat'])); dbndb = dbndb.dbndb;
+        dbndbc = load(fullfile(cfg.paths.models, ['dbndbcNO' tag '.mat'])); dbndbc = dbndbc.dbndbc;
+    catch
+        return;
+    end
+    
+    dvh = quad2fun(dbndh, 0);
+    dve = quad2fun(dbnde, 0);
+    dvc = quad2fun(dbndc, 0);
+    dvb = quad2fun(dbndb, 0);
+    dvbc = quad2fun(dbndbc, 0);
+    
+    % Compute DVs: R columns = [rh(1:3), re(1:3), rp(1), rb(1:2)]
+    content_near = [apply_dv(dvh, R_near(:, 1:3)), apply_dv(dve, R_near(:, 4:6)), R_near(:, 7)];
+    content_far  = [apply_dv(dvh, R_far(:, 1:3)),  apply_dv(dve, R_far(:, 4:6)),  R_far(:, 7)];
+    
+    same_c = apply_dv(dvc, content_near);
+    diff_c = apply_dv(dvc, content_far);
+    
+    same_b = apply_dv(dvb, R_near(:, 8:9));
+    diff_b = apply_dv(dvb, R_far(:, 8:9));
+    
+    % Prepare 2D Boundary map
+    [X, Y] = meshgrid(linspace(-5, 5, 50), linspace(-5, 5, 50));
+    Z = zeros(size(X));
+    for i = 1:numel(X)
+        Z(i) = dvbc([X(i); Y(i)]);
+    end
     
     figure('Name', 'Stage 5: Decision Variables & Boundaries', 'Position', [200 200 800 800]);
     
@@ -372,15 +445,9 @@ function plot_stage5(cfg, ecc)
     
     % 2D Boundary (Bottom Row Spanning)
     subplot(2,2,3:4);
-    imagesc(linspace(-5,5,100), linspace(-5,5,100), Z); axis xy; hold on;
+    imagesc(linspace(-5,5,50), linspace(-5,5,50), Z); axis xy; hold on;
     contour(X, Y, Z, [0 0], 'k', 'LineWidth', 2);
-    try
-        cb = colorbarpzn(min(Z(:)), max(Z(:))); 
-        cb.Label.String = 'Decision Variable Value';
-    catch
-        cb = colorbar; 
-        cb.Label.String = 'Decision Variable Value';
-    end
+    cb = colorbar; cb.Label.String = 'Decision Variable Value';
     % Plot synthetic points
     scatter(diff_c, diff_b, 10, 'b', 'filled', 'MarkerEdgeColor', 'w', 'LineWidth', 0.5);
     scatter(same_c, same_b, 10, 'r', 'filled', 'MarkerEdgeColor', 'w', 'LineWidth', 0.5);
@@ -470,5 +537,100 @@ function plot_stage7(cfg, out, method, itype, ecc)
         if ex == 1, title('Segmented Output'); end
         
         drawnow; % update UI
+    end
+end
+
+% =========================================================================
+% NEW HELPER FUNCTIONS FOR TRUE LLR COMPUTATION
+% =========================================================================
+
+function [near, far] = compute_demo_responses(cfg, ecc)
+    % Extract variables needed for pair_responses
+    btype  = 5;                            
+    b0     = 16;                           
+    thresh = cfg.dv.edge_thresh;
+    psz    = cfg.patch.size / ecc;
+    nh     = cfg.features.spot_dims;       
+    ne     = cfg.features.edge_dv_dims;    
+
+    feature_list = zeros(1, 20);  feature_list([1 5 6 7 9 10 11 13 14]) = 1;
+    cstat        = zeros(1, 20);  cstat([1 5 6 7 9 10 11 13 14]) = btype;
+    eccb = 1;
+
+    [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
+    
+    pp_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
+    if ~isfile(pp_path)
+        % Fallback: Synthesize patches if derived data isn't built yet
+        img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
+        if isfile(img_path)
+            img = double(imread(img_path));
+        else
+            img = double(imread('peppers.png'));
+        end
+        if size(img, 3) == 1
+            img = repmat(img, [1 1 3]);
+        end
+        
+        n_sample = 150;
+        ptchn_sub = zeros(psz, 2*psz, 3, n_sample);
+        ptchf_sub = zeros(psz, 2*psz, 3, n_sample);
+        
+        rng(42);
+        for i = 1:n_sample
+            r1 = randi(size(img,1) - psz); c1 = randi(size(img,2) - 2*psz);
+            ptchn_sub(:,:,:,i) = img(r1:r1+psz-1, c1:c1+2*psz-1, :);
+            
+            r2 = randi(size(img,1) - psz); c2a = randi(size(img,2) - psz); c2b = randi(size(img,2) - psz);
+            ptchf_sub(:,:,:,i) = cat(2, img(r2:r2+psz-1, c2a:c2a+psz-1, :), img(r2:r2+psz-1, c2b:c2b+psz-1, :));
+        end
+    else
+        pp = load(pp_path, 'ptchn', 'ptchf');
+        n_sample = min(150, size(pp.ptchn, 4));
+        ptchn_sub = pp.ptchn(:,:,:,1:n_sample);
+        ptchf_sub = pp.ptchf(:,:,:,1:n_sample);
+    end
+    
+    near = pair_responses(ptchn_sub, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
+    far  = pair_responses(ptchf_sub, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
+end
+
+function R = pair_responses(patches, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg)
+% Per-pair [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2], dropping outliers
+    m0 = cfg.norm.target_mean;
+    c0 = cfg.norm.target_contrast;
+    lo = -25; hi = 25;
+    n_pairs = size(patches, 4);
+    R = zeros(n_pairs, 9);
+    n = 0;
+    for i = 1:n_pairs
+        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3));
+        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
+        a1 = p1(:, :, 1);
+        a2 = p2(:, :, 1);
+
+        rp   = log(vislab.nat_stat_bayes.dv_power(a1, a2, b0, psz));
+        spot = vislab.nat_stat_bayes.dv_spot_hist(p1, p2, psz, bin_bounds, n_bins, feature_list);
+        rh = log([spot(nh(1)), spot(nh(2)), spot(nh(3))]);
+
+        a1 = vislab.lib.cntrst_norm(a1, c0, psz);
+        a2 = vislab.lib.cntrst_norm(a2, c0, psz);
+        border = vislab.nat_stat_bayes.dv_border(a1, a2, psz, 2, cfg.dv.sd1, cfg.dv.nsd1, false);
+        edge   = vislab.nat_stat_bayes.dv_edge_hist(a1, a2, thresh, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
+        re = log([edge(ne(1)), edge(ne(2)), edge(ne(3))]);
+
+        check = [rh, re, rp];
+        if all(check > lo) && all(check < hi)
+            n = n + 1;
+            R(n, :) = [rh, re, rp, border(1), border(2)];
+        end
+    end
+    R = R(1:n, :);
+end
+
+function y = apply_dv(dv_fun, X)
+    y = zeros(size(X, 1), 1);
+    for i = 1:size(X, 1)
+        y(i) = dv_fun(X(i, :)');
     end
 end
