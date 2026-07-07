@@ -85,9 +85,8 @@ end
 fprintf('\n--- Generating Illustrative Plots for Stages 1-5 ---\n');
 ecc = 1;
 plot_stage1(cfg);
-plot_stage2(cfg);
+plot_stage2(cfg, ecc);
 plot_stage3(cfg, ecc);
-plot_stage4(cfg, ecc);
 plot_stage5(cfg, ecc);
 drawnow;
 
@@ -202,22 +201,77 @@ function plot_stage1(cfg)
     title('3. ABR (Decorrelated) Space'); xlabel('A'); ylabel('B'); zlabel('R');
 end
 
-function plot_stage2(cfg)
+function plot_stage2(cfg, ecc)
     if cfg.optics.apply, out_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     out_path = fullfile(cfg.paths.models, out_file);
     if ~isfile(out_path), return; end
     cdfs = load(out_path);
     
-    figure('Name', 'Stage 2: Feature Extraction (CDFs)', 'Position', [200 200 400 800]);
+    if cfg.optics.apply, bin_file = 'AHEO_bins.mat'; else, bin_file = 'AHE_bins.mat'; end
+    bin_path = fullfile(cfg.paths.models, bin_file);
+    has_bins = isfile(bin_path);
+    if has_bins
+        S = load(bin_path);
+        ecc_idx = find(S.eccs == ecc, 1);
+    end
     
-    subplot(3,1,1); plot(cdfs.ea(1:end-1), cdfs.Na, 'LineWidth', 2); ylim([0 1]);
-    title('Achromatic Channel CDF'); xlabel('Feature Value'); ylabel('Cumulative Prob');
+    figure('Name', 'Task-independent CDF''s, and task-optimized bins', 'Position', [100 100 800 1000]);
     
-    subplot(3,1,2); plot(cdfs.em(1:end-1), cdfs.Nm, 'LineWidth', 2); ylim([0 1]);
-    title('1st Deriv Magnitude CDF'); xlabel('Feature Value'); ylabel('Cumulative Prob');
+    trunc_xlim = @(e, N) xlim([e(max(1, find(N >= 0.01, 1, 'first'))), e(max(1, find(N >= 0.99, 1, 'first')))]);
     
-    subplot(3,1,3); plot(cdfs.ecs1(1:end-1), cdfs.Ncs1, 'LineWidth', 2); ylim([0 1]);
-    title('Center-Surround (Small) CDF'); xlabel('Feature Value'); ylabel('Cumulative Prob');
+    % Base size for 5x5 kernel
+    sz5 = 0.05; 
+    % Proportional size for 3x3 kernel
+    sz3 = sz5 * (3/5);
+    
+    function plot_feature(ax_idx, e, N, dim, xl_str)
+        subplot(4,2,ax_idx);
+        plot(e(1:end-1), N, 'LineWidth', 2); hold on; ylim([0 1]); trunc_xlim(e, N);
+        if has_bins && ~isempty(S.bin_bounds{dim, ecc_idx})
+            bnds = S.bin_bounds{dim, ecc_idx};
+            for b = bnds', xline(b, 'k-', 'LineWidth', 0.5); end
+        end
+        xlabel(xl_str); ylabel('Cumulative Prob');
+    end
+
+    % --- SPOT FEATURES (Rows 1 & 2) ---
+    % 1. Achromatic (Dim 1)
+    plot_feature(1, cdfs.ea, cdfs.Na, 1, 'Achromatic');
+    
+    % 2. Center-Surround Small (Dim 13)
+    plot_feature(3, cdfs.ecs2, cdfs.Ncs2, 13, 'Center-Surround (Small)');
+    pos6 = get(gca, 'Position'); axes('Position', [pos6(1)+pos6(3)-0.01-sz3, pos6(2)+0.02, sz3, sz3]);
+    imagesc([-1 -1 -1; -1 8 -1; -1 -1 -1]); colormap(gca, gray); axis image off;
+    
+    % 3. Center-Surround Large (Dim 14)
+    plot_feature(4, cdfs.ecs4, cdfs.Ncs4, 14, 'Center-Surround (Large)');
+    pos7 = get(gca, 'Position'); axes('Position', [pos7(1)+pos7(3)-0.01-sz5, pos7(2)+0.02, sz5, sz5]);
+    k_lg = -ones(5); k_lg(3,3) = 24;
+    imagesc(k_lg); colormap(gca, gray); axis image off;
+
+    % --- EDGE FEATURES (Row 3) ---
+    % 4. 1st Deriv Magnitude / Edge (Dim 5)
+    plot_feature(5, cdfs.em, cdfs.Nm, 5, '1st Deriv (Edge) Magnitude');
+    pos2 = get(gca, 'Position'); axes('Position', [pos2(1)+pos2(3)-0.01-sz3, pos2(2)+0.02, sz3, sz3]);
+    imagesc([-1 0 1; -2 0 2; -1 0 1]); colormap(gca, gray); axis image off;
+    
+    % 5. 1st Deriv Orientation / Edge (Dim 6)
+    plot_feature(6, cdfs.eo, cdfs.No, 6, '1st Deriv (Edge) Orientation (degrees)');
+    xticks([-180 0 180]);
+    pos3 = get(gca, 'Position'); axes('Position', [pos3(1)+pos3(3)-0.01-sz3, pos3(2)+0.02, sz3, sz3]);
+    imagesc([-1 0 1; -2 0 2; -1 0 1]); colormap(gca, gray); axis image off;
+    
+    % --- BAR FEATURES (Row 4) ---
+    % 6. 2nd Deriv Magnitude / Bar (Dim 9)
+    plot_feature(7, cdfs.em2, cdfs.Nm2, 9, '2nd Deriv (Bar) Magnitude');
+    pos4 = get(gca, 'Position'); axes('Position', [pos4(1)+pos4(3)-0.01-sz3, pos4(2)+0.02, sz3, sz3]);
+    imagesc([-1 2 -1; -1 2 -1; -1 2 -1]); colormap(gca, gray); axis image off;
+
+    % 7. 2nd Deriv Orientation / Bar (Dim 10)
+    plot_feature(8, cdfs.eo2, cdfs.No2, 10, '2nd Deriv (Bar) Orientation (degrees)');
+    xticks([-90 0 90]);
+    pos5 = get(gca, 'Position'); axes('Position', [pos5(1)+pos5(3)-0.01-sz3, pos5(2)+0.02, sz3, sz3]);
+    imagesc([-1 2 -1; -1 2 -1; -1 2 -1]); colormap(gca, gray); axis image off;
 end
 
 function plot_stage3(cfg, ecc)
@@ -276,34 +330,7 @@ function plot_stage3(cfg, ecc)
     end
 end
 
-function plot_stage4(cfg, ecc)
-    if cfg.optics.apply, file = 'AHEO_bins.mat'; else, file = 'AHE_bins.mat'; end
-    out_path = fullfile(cfg.paths.models, file);
-    if ~isfile(out_path), return; end
-    S = load(out_path);
-    ecc_idx = find(S.eccs == ecc, 1);
-    
-    if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
-    cdfs = load(fullfile(cfg.paths.models, cdf_file));
-    
-    figure('Name', 'Stage 4: Adaptive Histogram Binning', 'Position', [200 200 400 800]);
-    
-    % Dim 1
-    subplot(2,1,1);
-    bnds1 = S.bin_bounds{1, ecc_idx};
-    plot(cdfs.ea(1:end-1), cdfs.Na, 'LineWidth', 2); hold on; ylim([0 1]);
-    for b = bnds1', xline(b, 'k-', 'LineWidth', 0.5); end
-    title('Achromatic CDF & Adaptive Bins');
-    xlim([bnds1(1) bnds1(end)]); xlabel('Feature Value'); ylabel('Cumulative Prob');
-    
-    % Dim 5
-    subplot(2,1,2);
-    bnds5 = S.bin_bounds{5, ecc_idx};
-    plot(cdfs.em(1:end-1), cdfs.Nm, 'LineWidth', 2); hold on; ylim([0 1]);
-    for b = bnds5', xline(b, 'k-', 'LineWidth', 0.5); end
-    title('Edge Mag CDF & Adaptive Bins');
-    xlim([bnds5(1) bnds5(end)]); xlabel('Feature Value'); ylabel('Cumulative Prob');
-end
+
 
 function plot_stage5(cfg, ecc)
     tag = num2str(ecc);
@@ -327,23 +354,23 @@ function plot_stage5(cfg, ecc)
     diff_c = -1.5 + randn(n_pts,1)*1.5;
     diff_b = -1.5 + randn(n_pts,1)*1.5;
     
-    figure('Name', 'Stage 5: Decision Variables & Boundaries', 'Position', [200 200 1200 400]);
+    figure('Name', 'Stage 5: Decision Variables & Boundaries', 'Position', [200 200 800 800]);
     
-    % 1D Histograms
-    subplot(1,3,1); hold on;
+    % 1D Histograms (Top Row)
+    subplot(2,2,1); hold on;
     histogram(diff_c, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
     histogram(same_c, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
     title('Content DV Distribution (Proxy)'); xlabel('Content DV'); ylabel('Prob Density');
     legend('Far Pairs', 'Near Pairs', 'Location', 'best');
     
-    subplot(1,3,2); hold on;
+    subplot(2,2,2); hold on;
     histogram(diff_b, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
     histogram(same_b, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
     title('Border DV Distribution (Proxy)'); xlabel('Border DV'); ylabel('Prob Density');
     legend('Far Pairs', 'Near Pairs', 'Location', 'best');
     
-    % 2D Boundary
-    subplot(1,3,3);
+    % 2D Boundary (Bottom Row Spanning)
+    subplot(2,2,3:4);
     imagesc(linspace(-5,5,100), linspace(-5,5,100), Z); axis xy; hold on;
     contour(X, Y, Z, [0 0], 'k', 'LineWidth', 2);
     try
