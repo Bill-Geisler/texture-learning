@@ -216,6 +216,7 @@ function plot_stage2(cfg, ecc)
     end
     
     figure('Name', 'Task-independent CDF''s, and task-optimized bins', 'Position', [100 100 800 1000]);
+    sgtitle('Task-independent CDF''s, and task-optimized bins');
     
     trunc_xlim = @(e, N) xlim([e(max(1, find(N >= 0.01, 1, 'first'))), e(max(1, find(N >= 0.99, 1, 'first')))]);
     
@@ -231,7 +232,7 @@ function plot_stage2(cfg, ecc)
             bnds = S.bin_bounds{dim, ecc_idx};
             for b = bnds', xline(b, 'k-', 'LineWidth', 0.5); end
         end
-        xlabel(xl_str); ylabel('Cumulative Prob');
+        xlabel(xl_str);
     end
 
     % --- SPOT FEATURES (Rows 1 & 2) ---
