@@ -20,7 +20,6 @@ function s2_learn_feature_cdfs(cfg)
 %   Diagnostic plots omitted.
 
     psz       = cfg.patch.size;
-    nsmp      = cfg.natural.n_samples;
     maxval    = cfg.natural.max_val;
     m0        = cfg.norm.target_mean;
     c0        = cfg.norm.target_contrast;
@@ -36,6 +35,7 @@ function s2_learn_feature_cdfs(cfg)
     coeff = s.coeff;
 
     files = list_natural_images(cfg);
+    nsmp = ceil(cfg.natural.target_isolated_patches / numel(files));
     cap = numel(files) * nsmp * psz^2;   % generous preallocation upper bound
 
     lms   = zeros(cap, 3);   n_lms = 0;

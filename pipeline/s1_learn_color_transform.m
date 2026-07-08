@@ -23,7 +23,6 @@ function coeff = s1_learn_color_transform(cfg)
 %             cps_lms2abr[_otf].mat (var `coeff`), shared across the lab.
 
     psz    = cfg.patch.size;
-    nsmp   = cfg.natural.n_samples;
     maxval = cfg.natural.max_val;
     m0     = cfg.norm.target_mean;
     c0     = cfg.norm.target_contrast;
@@ -31,6 +30,8 @@ function coeff = s1_learn_color_transform(cfg)
     norm_type = 3;                                   % average-mean normalization
 
     files = list_natural_images(cfg);
+    nsmp = ceil(cfg.natural.target_isolated_patches / numel(files));
+
     lms_pixels = zeros(numel(files) * nsmp * psz^2, 3);
     n = 0;
 

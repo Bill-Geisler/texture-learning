@@ -20,11 +20,11 @@ function s3_make_nearfar_pairs(cfg, ecc)
 
     psz  = cfg.patch.size / ecc;         % patch size at this eccentricity
     psz2 = 2 * psz;
-    nsmp = 10;                           % reference patches per image
     n_colr = 3;
     maxval = cfg.natural.max_val;        % patches are stored raw (LMS); normalized in later stages
 
     files = list_natural_images(cfg);
+    nsmp = ceil(cfg.natural.target_nearfar_references / numel(files));
     max_pairs = numel(files) * nsmp * 2;
     ptchn = zeros(psz, psz2, n_colr, max_pairs);
     ptchf = zeros(psz, psz2, n_colr, max_pairs);

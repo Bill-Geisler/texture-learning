@@ -12,14 +12,15 @@
 %   the same or different textures. This training is computationally expensive and
 %   requires the full natural image dataset in vislab-common/data. 
 %
-%   For convenience, this demo defaults to skipping stages 1-5 and uses the SHIPPED 
-%   trained model in data/models to directly run the self-supervised 
-%   texture-discrimination stage (s6) and segmentation stage (s7) on 
-%   "Grown-Texture-Region" (GTR) images. GTR images are constructed by growing 
-%   random regions and filling them with source textures from datasets like Brodatz.
-%   All six texture datasets (Pertex, Fabric, Brodatz, VisTex, McGill) are supported.
+%   For convenience, this demo defaults to `demo_type = 'quick'`, which skips 
+%   stages 1-5. Instead of loading all patch pairs to train the decision 
+%   boundaries from scratch, it generates illustrative plots using a fast subset 
+%   of patch pairs and uses the SHIPPED pre-trained decision bounds (which 
+%   fully cover all bounds needed for the entire demo pipeline). 
 %
-%   To re-run the expensive training stages 1-5, set `run_training_stages = true` below.
+%   If you set `demo_type = 'full'`, the demo will load all patch pairs to 
+%   actually train the decision bounds from scratch, and run the entire pipeline 
+%   (this is computationally expensive).
 
 % --- locate the repo and set up the path ---
 repo_root = fileparts(mfilename('fullpath'));
@@ -28,9 +29,12 @@ setup;
 cfg = config;
 
 % --- 0. (Optional) Run Pipeline Stages 1-5: Training the Model ---
-run_training_stages = false; % Set to true to re-train the model from scratch
+% Set demo_type to 'quick' or 'full':
+%   'quick': Fast version using a few patch pairs and shipped decision boundaries.
+%   'full':  Load all patch pairs to actually train the decision bounds.
+demo_type = 'quick'; 
 
-if run_training_stages
+if strcmp(demo_type, 'full')
     fprintf('\n--- Running Pipeline Stages 1-5: Training the Model ---\n');
     fprintf('Note: This requires the calibrated natural images in vislab-common/data.\n\n');
     
@@ -163,11 +167,10 @@ function plot_stage1(cfg)
     try
         % Load a natural image from the dataset for illustration
         img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
-        if isfile(img_path)
-            img = double(imread(img_path));
-        else
-            img = double(imread('peppers.png')); % fallback
+        if ~isfile(img_path)
+            error('True CPS natural image not found.');
         end
+        img = double(imread(img_path));
     catch
         fprintf('Could not load natural image for Stage 1 plot.\n');
         return;
@@ -263,7 +266,7 @@ function plot_stage2(cfg, ecc)
     
     % 5. 1st Deriv Orientation / Edge (Dim 6)
     plot_feature(6, cdfs.eo, cdfs.No, 6, '1st Deriv (Edge) Orientation (degrees)');
-    xticks([-180 0 180]);
+    xlim([-180 180]); xticks([-180 0 180]);
     pos3 = get(gca, 'Position'); axes('Position', [pos3(1)+pos3(3)-0.01-sz3, pos3(2)+0.02, sz3, sz3]);
     imagesc([-1 0 1; -2 0 2; -1 0 1]); colormap(gca, gray); axis image off;
     
@@ -275,7 +278,7 @@ function plot_stage2(cfg, ecc)
 
     % 7. 2nd Deriv Orientation / Bar (Dim 10)
     plot_feature(8, cdfs.eo2, cdfs.No2, 10, '2nd Deriv (Bar) Orientation (degrees)');
-    xticks([-90 0 90]);
+    xlim([-90 90]); xticks([-90 0 90]);
     pos5 = get(gca, 'Position'); axes('Position', [pos5(1)+pos5(3)-0.01-sz3, pos5(2)+0.02, sz3, sz3]);
     imagesc([-1 2 -1; -1 2 -1; -1 2 -1]); colormap(gca, gray); axis image off;
 end
@@ -290,11 +293,12 @@ function plot_stage3(cfg, ecc)
     if ~isfile(out_path)
         % patch_pairs_1.mat is missing. Synthesize from natural image.
         img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
-        if isfile(img_path)
-            img = double(rgb2gray(imread(img_path)));
-        else
-            img = double(rgb2gray(imread('peppers.png')));
+        if ~isfile(img_path)
+            fprintf('True CPS natural image not found. Skipping Stage 3.\n');
+            return;
         end
+        img = double(rgb2gray(imread(img_path)));
+        
         psz = cfg.patch.size / ecc;
         for i = 1:n_show
             r1 = randi(size(img,1) - psz); c1 = randi(size(img,2) - 2*psz);
@@ -339,55 +343,140 @@ end
 function plot_stage5_intermediate(cfg, ecc, R_near, R_far)
     if isempty(R_near), return; end
     tag = num2str(ecc);
-    out_path = fullfile(cfg.paths.models, ['dbndhNO' tag '.mat']);
-    if ~isfile(out_path), return; end
     
-    S = load(out_path);
-    dbndh = S.dbndh;
+    try
+        S_h = load(fullfile(cfg.paths.models, ['dbndhNO' tag '.mat'])); dbndh = S_h.dbndh;
+        S_e = load(fullfile(cfg.paths.models, ['dbndeNO' tag '.mat'])); dbnde = S_e.dbnde;
+        S_c = load(fullfile(cfg.paths.models, ['dbndcNO' tag '.mat'])); dbndc = S_c.dbndc;
+        S_b = load(fullfile(cfg.paths.models, ['dbndbNO' tag '.mat'])); dbndb = S_b.dbndb;
+    catch
+        return;
+    end
     dvh = quad2fun(dbndh, 0);
+    dve = quad2fun(dbnde, 0);
+    dvc = quad2fun(dbndc, 0);
+    dvb = quad2fun(dbndb, 0);
     
-    % True component LLRs (3D: spots)
-    near_pts = R_near(:, 1:3);
-    far_pts  = R_far(:, 1:3);
+    figure('Name', 'Stage 5A: Spot & Edge DV Construction', 'Position', [150 150 1200 900]);
     
-    figure('Name', 'Intermediate Stage 5: Spot DV Construction', 'Position', [150 150 600 800]);
+    % ==========================================
+    % ROW 1: SPOT DV
+    % ==========================================
+    near_pts_h = R_near(:, 1:3);
+    far_pts_h  = R_far(:, 1:3);
     
     % --- 3D Scatter & Boundary ---
-    subplot(2,1,1); hold on;
-    scatter3(far_pts(:,1), far_pts(:,2), far_pts(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'w', 'MarkerFaceAlpha', 0.6);
-    scatter3(near_pts(:,1), near_pts(:,2), near_pts(:,3), 15, 'r', 'filled', 'MarkerEdgeColor', 'w', 'MarkerFaceAlpha', 0.6);
-    
+    subplot(2,2,1); hold on;
+    scatter3(far_pts_h(:,1), far_pts_h(:,2), far_pts_h(:,3), 15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(near_pts_h(:,1), near_pts_h(:,2), near_pts_h(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
     % Compute 3D boundary isosurface
-    [X, Y, Z] = meshgrid(linspace(-5, 5, 20), linspace(-5, 5, 20), linspace(-5, 5, 20));
-    V = zeros(size(X));
-    for i = 1:numel(X)
-        V(i) = dvh([X(i); Y(i); Z(i)]);
-    end
+    x_min = min([near_pts_h(:,1); far_pts_h(:,1)]) - 1; x_max = max([near_pts_h(:,1); far_pts_h(:,1)]) + 1;
+    y_min = min([near_pts_h(:,2); far_pts_h(:,2)]) - 1; y_max = max([near_pts_h(:,2); far_pts_h(:,2)]) + 1;
+    z_min = min([near_pts_h(:,3); far_pts_h(:,3)]) - 1; z_max = max([near_pts_h(:,3); far_pts_h(:,3)]) + 1;
     
-    fv = isosurface(X, Y, Z, V, 0);
+    [Xg, Yg, Zg] = meshgrid(linspace(x_min, x_max, 40), linspace(y_min, y_max, 40), linspace(z_min, z_max, 40));
+    pts_grid = [Xg(:), Yg(:), Zg(:)];
+    V = apply_dv(dvh, pts_grid);
+    V = reshape(V, size(Xg));
+    
+    fv = isosurface(Xg, Yg, Zg, V, 0);
     if ~isempty(fv.vertices)
         p = patch('Faces', fv.faces, 'Vertices', fv.vertices);
-        p.FaceColor = 'k';
-        p.EdgeColor = 'none';
-        p.FaceAlpha = 0.2;
+        p.FaceColor = 'g'; p.EdgeColor = 'none'; p.FaceAlpha = 0.3;
         camlight; lighting gouraud;
     end
     
     view(3); grid on;
-    title('3D Spot Feature Space (Achromatic, CS-Small, CS-Large)');
-    xlabel('LLR Achromatic'); ylabel('LLR CS-Small'); zlabel('LLR CS-Large');
+    title('Constructing Spot DV');
+    xlabel('Achromatic'); ylabel('CS-Small'); zlabel('CS-Large');
     legend('Far Pairs', 'Near Pairs', 'Decision Boundary', 'Location', 'best');
     
     % --- 1D Combined Distribution ---
-    subplot(2,1,2); hold on;
-    near_dv = apply_dv(dvh, near_pts);
-    far_dv = apply_dv(dvh, far_pts);
+    subplot(2,2,2); hold on;
+    near_dv_h = apply_dv(dvh, near_pts_h);
+    far_dv_h = apply_dv(dvh, far_pts_h);
     
-    histogram(far_dv, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-    histogram(near_dv, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-    title('Combined Spot DV (1D Output of Quadratic SVM)');
-    xlabel('Spot DV Value'); ylabel('Probability Density');
+    histogram(far_dv_h, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(near_dv_h, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    xlabel('Spot DV Value');
     legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+    
+    % ==========================================
+    % ROW 2: EDGE DV
+    % ==========================================
+    near_pts_e = R_near(:, 4:6);
+    far_pts_e  = R_far(:, 4:6);
+    
+    % --- 3D Scatter & Boundary ---
+    subplot(2,2,3); hold on;
+    scatter3(far_pts_e(:,1), far_pts_e(:,2), far_pts_e(:,3), 15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(near_pts_e(:,1), near_pts_e(:,2), near_pts_e(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    % Compute 3D boundary isosurface
+    x_min = min([near_pts_e(:,1); far_pts_e(:,1)]) - 1; x_max = max([near_pts_e(:,1); far_pts_e(:,1)]) + 1;
+    y_min = min([near_pts_e(:,2); far_pts_e(:,2)]) - 1; y_max = max([near_pts_e(:,2); far_pts_e(:,2)]) + 1;
+    z_min = min([near_pts_e(:,3); far_pts_e(:,3)]) - 1; z_max = max([near_pts_e(:,3); far_pts_e(:,3)]) + 1;
+    
+    [Xg, Yg, Zg] = meshgrid(linspace(x_min, x_max, 40), linspace(y_min, y_max, 40), linspace(z_min, z_max, 40));
+    pts_grid = [Xg(:), Yg(:), Zg(:)];
+    V = apply_dv(dve, pts_grid);
+    V = reshape(V, size(Xg));
+    
+    fv = isosurface(Xg, Yg, Zg, V, 0);
+    if ~isempty(fv.vertices)
+        p = patch('Faces', fv.faces, 'Vertices', fv.vertices);
+        p.FaceColor = 'g'; p.EdgeColor = 'none'; p.FaceAlpha = 0.3;
+        camlight; lighting gouraud;
+    end
+    
+    view(3); grid on;
+    title('Constructing Edge DV');
+    xlabel('Edge Mag'); ylabel('Bar Mag'); zlabel('Bar Ori');
+    
+    % --- 1D Combined Distribution ---
+    subplot(2,2,4); hold on;
+    near_dv_e = apply_dv(dve, near_pts_e);
+    far_dv_e = apply_dv(dve, far_pts_e);
+    
+    histogram(far_dv_e, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(near_dv_e, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    xlabel('Edge DV Value');
+    
+    % ==========================================
+    % NEW FIGURE: BORDER DV CONSTRUCTION
+    % ==========================================
+    figure('Name', 'Stage 5B: Border DV Construction', 'Position', [150 150 1200 400]);
+    
+    near_pts_b = R_near(:, 8:9);
+    far_pts_b  = R_far(:, 8:9);
+    
+    % --- 2D Scatter & Boundary (Left) ---
+    subplot(1,2,1); hold on;
+    scatter(far_pts_b(:,1), far_pts_b(:,2), 15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter(near_pts_b(:,1), near_pts_b(:,2), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    
+    x_min = min([near_pts_b(:,1); far_pts_b(:,1)]) - 1; x_max = max([near_pts_b(:,1); far_pts_b(:,1)]) + 1;
+    y_min = min([near_pts_b(:,2); far_pts_b(:,2)]) - 1; y_max = max([near_pts_b(:,2); far_pts_b(:,2)]) + 1;
+    
+    [Xg, Yg] = meshgrid(linspace(x_min, x_max, 200), linspace(y_min, y_max, 200));
+    pts_grid = [Xg(:), Yg(:)];
+    Zg = apply_dv(dvb, pts_grid);
+    Zg = reshape(Zg, size(Xg));
+    
+    contour(Xg, Yg, Zg, [0 0], 'k', 'LineWidth', 2);
+    
+    grid on;
+    title('Constructing Border DV');
+    xlabel('Border Edge Mag'); ylabel('Border Bar Mag');
+    legend('Far Pairs', 'Near Pairs', 'Decision Boundary', 'Location', 'best');
+    
+    % --- 1D Combined Distribution (Right) ---
+    subplot(1,2,2); hold on;
+    near_dv_b = apply_dv(dvb, near_pts_b);
+    far_dv_b  = apply_dv(dvb, far_pts_b);
+    
+    histogram(far_dv_b, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(near_dv_b, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    xlabel('Border DV Value');
 end
 
 function plot_stage5(cfg, ecc, R_near, R_far)
@@ -412,8 +501,8 @@ function plot_stage5(cfg, ecc, R_near, R_far)
     dvbc = quad2fun(dbndbc, 0);
     
     % Compute DVs: R columns = [rh(1:3), re(1:3), rp(1), rb(1:2)]
-    content_near = [apply_dv(dvh, R_near(:, 1:3)), apply_dv(dve, R_near(:, 4:6)), R_near(:, 7)];
-    content_far  = [apply_dv(dvh, R_far(:, 1:3)),  apply_dv(dve, R_far(:, 4:6)),  R_far(:, 7)];
+    content_near = [R_near(:, 7), apply_dv(dvh, R_near(:, 1:3)), apply_dv(dve, R_near(:, 4:6))];
+    content_far  = [R_far(:, 7),  apply_dv(dvh, R_far(:, 1:3)),  apply_dv(dve, R_far(:, 4:6))];
     
     same_c = apply_dv(dvc, content_near);
     diff_c = apply_dv(dvc, content_far);
@@ -421,38 +510,82 @@ function plot_stage5(cfg, ecc, R_near, R_far)
     same_b = apply_dv(dvb, R_near(:, 8:9));
     diff_b = apply_dv(dvb, R_far(:, 8:9));
     
-    % Prepare 2D Boundary map
-    [X, Y] = meshgrid(linspace(-5, 5, 50), linspace(-5, 5, 50));
+    % Prepare 2D Boundary map (Dynamically bounded)
+    c_min = min([same_c; diff_c]) - 1; c_max = max([same_c; diff_c]) + 1;
+    b_min = min([same_b; diff_b]) - 1; b_max = max([same_b; diff_b]) + 1;
+    [X, Y] = meshgrid(linspace(c_min, c_max, 200), linspace(b_min, b_max, 200));
     Z = zeros(size(X));
     for i = 1:numel(X)
         Z(i) = dvbc([X(i); Y(i)]);
     end
     
-    figure('Name', 'Stage 5: Decision Variables & Boundaries', 'Position', [200 200 800 800]);
+    figure('Name', 'Stage 5C: Content & Overall DV Boundaries', 'Position', [200 200 1200 1000]);
     
-    % 1D Histograms (Top Row)
+    % ==========================================
+    % TOP ROW: CONTENT DV CONSTRUCTION
+    % ==========================================
+    % --- Content DV 3D Boundary (Left) ---
     subplot(2,2,1); hold on;
-    histogram(diff_c, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-    histogram(same_c, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-    title('Content DV Distribution (Proxy)'); xlabel('Content DV'); ylabel('Prob Density');
-    legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+    scatter3(content_far(:,1), content_far(:,2), content_far(:,3), 15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(content_near(:,1), content_near(:,2), content_near(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
     
+    x_min_c = min([content_near(:,1); content_far(:,1)]) - 1; x_max_c = max([content_near(:,1); content_far(:,1)]) + 1;
+    y_min_c = min([content_near(:,2); content_far(:,2)]) - 1; y_max_c = max([content_near(:,2); content_far(:,2)]) + 1;
+    z_min_c = min([content_near(:,3); content_far(:,3)]) - 1; z_max_c = max([content_near(:,3); content_far(:,3)]) + 1;
+    
+    [Xgc, Ygc, Zgc] = meshgrid(linspace(x_min_c, x_max_c, 40), linspace(y_min_c, y_max_c, 40), linspace(z_min_c, z_max_c, 40));
+    pts_grid_c = [Xgc(:), Ygc(:), Zgc(:)];
+    Vc = apply_dv(dvc, pts_grid_c);
+    Vc = reshape(Vc, size(Xgc));
+    
+    fv = isosurface(Xgc, Ygc, Zgc, Vc, 0);
+    if ~isempty(fv.vertices)
+        p = patch('Faces', fv.faces, 'Vertices', fv.vertices);
+        p.FaceColor = 'g'; p.EdgeColor = 'none'; p.FaceAlpha = 0.3;
+        camlight; lighting gouraud;
+    end
+    
+    view(3); grid on;
+    title('Constructing Content DV');
+    xlabel('Power DV'); ylabel('Spot DV'); zlabel('Edge DV');
+    legend('Far Pairs', 'Near Pairs', 'Decision Boundary', 'Location', 'best');
+    
+    % --- Content DV 1D Combined Distribution (Right) ---
     subplot(2,2,2); hold on;
-    histogram(diff_b, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-    histogram(same_b, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-    title('Border DV Distribution (Proxy)'); xlabel('Border DV'); ylabel('Prob Density');
+    histogram(diff_c, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(same_c, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    xlabel('Content DV Value');
     legend('Far Pairs', 'Near Pairs', 'Location', 'best');
     
-    % 2D Boundary (Bottom Row Spanning)
-    subplot(2,2,3:4);
-    imagesc(linspace(-5,5,50), linspace(-5,5,50), Z); axis xy; hold on;
+    % ==========================================
+    % BOTTOM ROW: FINAL OVERALL BOUNDARY
+    % ==========================================
+    subplot(2,2,3);
+    colormap(gca, 'jet');
+    imagesc(X(1,:), Y(:,1), Z); axis xy; hold on;
     contour(X, Y, Z, [0 0], 'k', 'LineWidth', 2);
-    cb = colorbar; cb.Label.String = 'Decision Variable Value';
-    % Plot synthetic points
-    scatter(diff_c, diff_b, 10, 'b', 'filled', 'MarkerEdgeColor', 'w', 'LineWidth', 0.5);
-    scatter(same_c, same_b, 10, 'r', 'filled', 'MarkerEdgeColor', 'w', 'LineWidth', 0.5);
-    title('Border+Content DV Boundary');
+    try
+        cb = colorbarpzn(min(Z(:)), max(Z(:))); 
+        cb.Label.String = 'Decision Variable Value';
+    catch
+        cb = colorbar; 
+        cb.Label.String = 'Decision Variable Value';
+    end
+    % Plot true points
+    scatter(diff_c, diff_b, 10, 'r', 'filled', 'MarkerEdgeColor', 'none', 'LineWidth', 0.5);
+    scatter(same_c, same_b, 10, 'b', 'filled', 'MarkerEdgeColor', 'none', 'LineWidth', 0.5);
+    title('Constructing Final DV (Border + Content)');
     xlabel('Content DV'); ylabel('Border DV');
+    
+    % --- Final DV 1D Combined Distribution (Right) ---
+    subplot(2,2,4); hold on;
+    near_dv_bc = apply_dv(dvbc, [same_c, same_b]);
+    far_dv_bc  = apply_dv(dvbc, [diff_c, diff_b]);
+    
+    histogram(far_dv_bc, 'FaceColor', 'r', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    histogram(near_dv_bc, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    xlabel('Final Overall DV Value');
+    title('Final Separation');
 end
 
 function plot_stage6(out, method)
@@ -563,11 +696,11 @@ function [near, far] = compute_demo_responses(cfg, ecc)
     if ~isfile(pp_path)
         % Fallback: Synthesize patches if derived data isn't built yet
         img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
-        if isfile(img_path)
-            img = double(imread(img_path));
-        else
-            img = double(imread('peppers.png'));
+        if ~isfile(img_path)
+            fprintf('True CPS natural image not found. Skipping Stage 5 true evaluation.\n');
+            near = []; far = []; return;
         end
+        img = double(imread(img_path));
         if size(img, 3) == 1
             img = repmat(img, [1 1 3]);
         end

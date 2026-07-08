@@ -25,10 +25,8 @@ for the HBO model this builds on.
   File Exchange). `setup.m` verifies they're installed; they are *not* bundled or fetched as source.
 - **vislab-common/data** — the shared data store, a sibling folder alongside this repo. Its texture sheets
   and colour transforms ship inside the `vislab-common` repo (so `setup.m`'s auto-clone brings them along);
-  only the large calibrated **natural-image** set (~19 GB) is **too large for GitHub** and must be obtained
-  separately (`setup.m` warns if the store is missing; edit `cfg.paths.data_root` if it's elsewhere). The
-  shipped model + the in-repo texture sheets cover the demo; the natural images are only needed to retrain
-  (s1–s5) from scratch.
+  the large calibrated **natural-image** set (~19 GB) is **too large for GitHub** and must be obtained
+  separately. However, a small **12-image demo subset** (4 images from 3 sets) is included directly in the repo to allow out-of-the-box training. The model uses a **constant-volume sampling algorithm**, which dynamically increases the per-image patch count when run on small datasets so that the total number of sampled patches (and patch-pairs) remains fixed at ~7,820 regardless of dataset size. This ensures the demo dataset provides the same statistical richness as the full dataset.
 - MATLAB with the Image Processing and Statistics & Machine Learning toolboxes.
 
 ## Setup

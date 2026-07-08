@@ -28,7 +28,8 @@ function cfg = config()
     % --- calibrated natural-image dataset (for learning priors: stages s1, s2) ---
     cfg.natural.sets      = {'Set9_16', 'Set10_16', 'Set12_16'};  % file-name stems in cfg.paths.natural_images
     cfg.natural.max_val   = 2^14 - 1;   % 14-bit pixel max (images scaled by 255/max_val)
-    cfg.natural.n_samples = 20;         % random patches sampled per image
+    cfg.natural.target_isolated_patches = 7820;      % total isolated patches to sample across all images
+    cfg.natural.target_nearfar_references = 3910;    % total near/far reference locations to sample
 
     % --- camera RGB -> human LMS cone matrix: now the shared lab calibration,
     %     loaded automatically by vislab.lib.rgb2lms from vislab-common/data/cps_rgb2lms.mat
