@@ -46,6 +46,8 @@ function s2_learn_feature_cdfs(cfg)
     cs4v  = zeros(cap, 1);   n_cs4 = 0;
 
     for f = 1:numel(files)
+        [~, fname, fext] = fileparts(files{f});
+        fprintf('sampling %s\n', [fname, fext]);
         img = double(imread(files{f})) * 255 / maxval;
         if cfg.optics.apply
             img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
@@ -110,7 +112,12 @@ function s2_learn_feature_cdfs(cfg)
 
     if cfg.optics.apply, out_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
     out_path = fullfile(cfg.paths.models, out_file);
-    save(out_path, 'ea','Na','eb','Nb','er','Nr','em','Nm','eo','No','emo','Nmo', ...
-        'em2','Nm2','eo2','No2','emo2','Nmo2','ecs1','Ncs1','ecs2','Ncs2','ecs4','Ncs4','coeff');
-    fprintf('s2: saved feature CDFs to %s (%d patches from %d images)\n', out_path, numel(files)*nsmp, numel(files));
+    reply = input(sprintf('s2: Save feature CDFs to disk and overwrite %s? (y/n): ', out_file), 's');
+    if strcmpi(reply, 'y')
+        save(out_path, 'ea','Na','eb','Nb','er','Nr','em','Nm','eo','No','emo','Nmo', ...
+            'em2','Nm2','eo2','No2','emo2','Nmo2','ecs1','Ncs1','ecs2','Ncs2','ecs4','Ncs4','coeff');
+        fprintf('s2: saved feature CDFs to %s (%d patches from %d images)\n', out_path, numel(files)*nsmp, numel(files));
+    else
+        fprintf('s2: skipped saving feature CDFs.\n');
+    end
 end

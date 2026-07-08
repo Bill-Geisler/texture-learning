@@ -95,8 +95,13 @@ function s4_optimize_bins(cfg, dim, ecc)
     bin_bounds{dim, ecc_idx} = bnds;
     n_bins_all(dim, ecc_idx) = nbnds;
     out = struct('bin_bounds', {bin_bounds}, 'n_bins', n_bins_all, 'eccs', eccs, 'btype', btype);
-    save(out_path, '-struct', 'out');
-    fprintf('s4: dim %d ecc %d -> %d bounds; updated %s\n', dim, ecc, nbnds, out_path);
+    reply = input(sprintf('s4: Save bin bounds to disk and overwrite %s for dim %d? (y/n): ', file, dim), 's');
+    if strcmpi(reply, 'y')
+        save(out_path, '-struct', 'out');
+        fprintf('s4: dim %d ecc %d -> %d bounds; updated %s\n', dim, ecc, nbnds, out_path);
+    else
+        fprintf('s4: skipped saving bin bounds for dim %d.\n', dim);
+    end
 end
 
 % ------------------------------------------------------------------------------

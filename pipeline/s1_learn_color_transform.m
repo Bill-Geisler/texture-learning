@@ -36,6 +36,8 @@ function coeff = s1_learn_color_transform(cfg)
     n = 0;
 
     for f = 1:numel(files)
+        [~, fname, fext] = fileparts(files{f});
+        fprintf('sampling %s\n', [fname, fext]);
         img = double(imread(files{f})) * 255 / maxval;      % scale 14-bit -> 0..255
         if cfg.optics.apply
             img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
@@ -57,6 +59,11 @@ function coeff = s1_learn_color_transform(cfg)
 
     if cfg.optics.apply, fname = 'cps_lms2abr_otf.mat'; else, fname = 'cps_lms2abr.mat'; end
     out_path = fullfile(cfg.paths.data_root, fname);   % lab-global transform lives in the shared store
-    save(out_path, 'coeff');
-    fprintf('s1: saved LMS->ABR rotation to %s (%d pixels from %d images)\n', out_path, n, numel(files));
+    reply = input(sprintf('s1: Save LMS->ABR rotation to disk and overwrite %s? (y/n): ', fname), 's');
+    if strcmpi(reply, 'y')
+        save(out_path, 'coeff');
+        fprintf('s1: saved LMS->ABR rotation to %s (%d pixels from %d images)\n', out_path, n, numel(files));
+    else
+        fprintf('s1: skipped saving LMS->ABR rotation.\n');
+    end
 end

@@ -80,7 +80,7 @@ if strcmp(demo_type, 'full')
     fprintf('-> Running Stage 5: s5_train_decision_vars...\n');
     s5_train_decision_vars(cfg, ecc);
     
-    fprintf('Training complete! Models saved to data/models/\n\n');
+    fprintf('Training complete.');
 else
     fprintf('\nSkipping Stages 1-5 (Training). Using the pre-built shipped models.\n');
 end

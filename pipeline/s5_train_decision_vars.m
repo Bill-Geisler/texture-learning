@@ -68,12 +68,17 @@ function s5_train_decision_vars(cfg, ecc, eccb)
 
     % save all bounds
     tag = num2str(ecc);
-    save_bound(cfg, ['dbndh'  'NO' tag], 'dbndh',  dbndh);
-    save_bound(cfg, ['dbnde'  'NO' tag], 'dbnde',  dbnde);
-    save_bound(cfg, ['dbndc'  'NO' tag], 'dbndc',  dbndc);
-    save_bound(cfg, ['dbndb'  'NO' tag], 'dbndb',  dbndb);
-    save_bound(cfg, ['dbndbc' 'NO' tag], 'dbndbc', dbndbc);
-    fprintf('s5: trained + saved dbnd{h,e,c,b,bc}NO%s (%d near, %d far pairs)\n', tag, size(near,1), size(far,1));
+    reply = input(sprintf('s5: Save decision variables to disk and overwrite dbnd{h,e,c,b,bc}NO%s.mat? (y/n): ', tag), 's');
+    if strcmpi(reply, 'y')
+        save_bound(cfg, ['dbndh'  'NO' tag], 'dbndh',  dbndh);
+        save_bound(cfg, ['dbnde'  'NO' tag], 'dbnde',  dbnde);
+        save_bound(cfg, ['dbndc'  'NO' tag], 'dbndc',  dbndc);
+        save_bound(cfg, ['dbndb'  'NO' tag], 'dbndb',  dbndb);
+        save_bound(cfg, ['dbndbc' 'NO' tag], 'dbndbc', dbndbc);
+        fprintf('s5: trained + saved dbnd{h,e,c,b,bc}NO%s (%d near, %d far pairs)\n', tag, size(near,1), size(far,1));
+    else
+        fprintf('s5: skipped saving decision variables.\n');
+    end
 end
 
 % ------------------------------------------------------------------------------

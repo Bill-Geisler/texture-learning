@@ -67,8 +67,13 @@ function s3_make_nearfar_pairs(cfg, ecc)
 
     if ~isfolder(cfg.paths.derived), mkdir(cfg.paths.derived); end
     out_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
-    save(out_path, 'ptchn', 'ptchf', 'pcnt');
-    fprintf('s3: saved %d near/far patch pairs (ecc %d) to %s\n', pcnt, ecc, out_path);
+    reply = input(sprintf('s3: Save near/far patch pairs to disk and overwrite patch_pairs_%d.mat? (y/n): ', ecc), 's');
+    if strcmpi(reply, 'y')
+        save(out_path, 'ptchn', 'ptchf', 'pcnt');
+        fprintf('s3: saved %d near/far patch pairs (ecc %d) to %s\n', pcnt, ecc, out_path);
+    else
+        fprintf('s3: skipped saving near/far patch pairs.\n');
+    end
 end
 
 function [xf, yf] = sample_far(szx, szy, psz2, x, y, dcrit)
