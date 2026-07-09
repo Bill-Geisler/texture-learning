@@ -66,5 +66,5 @@ The pipeline uses spot dims **[1 13 14]** and edge dims **[5 9 10]** in the cont
 `iso_patch`→`segmentation.assign_isolated_patches`, `merge_groups`→`segmentation.merge_similar_regions`,
 `reg_count`→`segmentation.count_correct_regions`; `mk_texs`→`gtr.sample_texture_ids`,
 `mk_masks`→`gtr.grow_region_masks`. Pipeline scripts `mk_rot_mtrx`→`s1_learn_color_transform`,
-`cdfs_of_features`→`s2_learn_feature_cdfs`, `nat_near_far_patches`→`s3_make_nearfar_pairs`,
+`priors_of_features`→`s2_learn_feature_priors`, `nat_near_far_patches`→`s3_make_nearfar_pairs`,
 `opt_bins_nat`→`s4_optimize_bins`, `nat_near_far_dv_2`→`s5_train_decision_vars`.

@@ -48,12 +48,12 @@ if strcmp(demo_type, 'full')
     fprintf('-> Running Stage 1: s1_learn_color_transform...\n');
     s1_learn_color_transform(cfg);
 
-    % Stage 2: Learn Feature CDFs
+    % Stage 2: Learn Feature Priors
     % We compute the task-independent prior probability distributions (Cumulative 
     % Distribution Functions) for the generic image features (edge, spot, power spectrum) 
     % measured from natural images.
-    fprintf('-> Running Stage 2: s2_learn_feature_cdfs...\n');
-    s2_learn_feature_cdfs(cfg);
+    fprintf('-> Running Stage 2: s2_learn_feature_priors...\n');
+    s2_learn_feature_priors(cfg);
 
     % Stage 3: Make Near/Far Training Pairs
     % The fundamental principle of the paper: proximity is a proxy for same-different labels.
@@ -100,7 +100,7 @@ ecc = 1;
 drawnow;
 
 % --- 1. check the shipped (or newly trained) artifacts are present ---
-needed = {'cdfs_abr_mo13_mo23_cs33_otf.mat', ...
+needed = {'priors_abr_mo13_mo23_cs33_otf.mat', ...
           'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO_bins.mat'};
 present = cellfun(@(f) exist(fullfile(cfg.paths.models, f), 'file') > 0, needed);
 if ~all(present)
@@ -210,10 +210,10 @@ function plot_stage1(cfg)
 end
 
 function plot_stage2(cfg, ecc)
-    if cfg.optics.apply, out_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
+    if cfg.optics.apply, out_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'priors_abr_mo13_mo23_cs33.mat'; end
     out_path = fullfile(cfg.paths.models, out_file);
     if ~isfile(out_path), return; end
-    cdfs = load(out_path);
+    priors = load(out_path);
     
     if cfg.optics.apply, bin_file = 'AHEO_bins.mat'; else, bin_file = 'AHE_bins.mat'; end
     bin_path = fullfile(cfg.paths.models, bin_file);
@@ -223,8 +223,8 @@ function plot_stage2(cfg, ecc)
         ecc_idx = find(S.eccs == ecc, 1);
     end
     
-    figure('Name', 'Task-independent CDF''s, and task-optimized bins', 'Position', [100 100 800 1000]);
-    sgtitle('Task-independent CDF''s, and task-optimized bins');
+    figure('Name', 'Task-independent Priors, and task-optimized bins', 'Position', [100 100 800 1000]);
+    sgtitle('Task-independent Priors, and task-optimized bins');
     
     trunc_xlim = @(e, N) xlim([e(max(1, find(N >= 0.01, 1, 'first'))), e(max(1, find(N >= 0.99, 1, 'first')))]);
     
@@ -245,39 +245,39 @@ function plot_stage2(cfg, ecc)
 
     % --- SPOT FEATURES (Rows 1 & 2) ---
     % 1. Achromatic (Dim 1)
-    plot_feature(1, cdfs.ea, cdfs.Na, 1, 'Achromatic');
+    plot_feature(1, priors.ea, priors.Na, 1, 'Achromatic');
     
     % 2. Center-Surround Small (Dim 13)
-    plot_feature(3, cdfs.ecs2, cdfs.Ncs2, 13, 'Center-Surround (Small)');
+    plot_feature(3, priors.ecs2, priors.Ncs2, 13, 'Center-Surround (Small)');
     pos6 = get(gca, 'Position'); axes('Position', [pos6(1)+pos6(3)-0.01-sz3, pos6(2)+0.02, sz3, sz3]);
     imagesc([-1 -1 -1; -1 8 -1; -1 -1 -1]); colormap(gca, gray); axis image off;
     
     % 3. Center-Surround Large (Dim 14)
-    plot_feature(4, cdfs.ecs4, cdfs.Ncs4, 14, 'Center-Surround (Large)');
+    plot_feature(4, priors.ecs4, priors.Ncs4, 14, 'Center-Surround (Large)');
     pos7 = get(gca, 'Position'); axes('Position', [pos7(1)+pos7(3)-0.01-sz5, pos7(2)+0.02, sz5, sz5]);
     k_lg = -ones(5); k_lg(3,3) = 24;
     imagesc(k_lg); colormap(gca, gray); axis image off;
 
     % --- EDGE FEATURES (Row 3) ---
     % 4. 1st Deriv Magnitude / Edge (Dim 5)
-    plot_feature(5, cdfs.em, cdfs.Nm, 5, '1st Deriv (Edge) Magnitude');
+    plot_feature(5, priors.em, priors.Nm, 5, '1st Deriv (Edge) Magnitude');
     pos2 = get(gca, 'Position'); axes('Position', [pos2(1)+pos2(3)-0.01-sz3, pos2(2)+0.02, sz3, sz3]);
     imagesc([-1 0 1; -2 0 2; -1 0 1]); colormap(gca, gray); axis image off;
     
     % 5. 1st Deriv Orientation / Edge (Dim 6)
-    plot_feature(6, cdfs.eo, cdfs.No, 6, '1st Deriv (Edge) Orientation (degrees)');
+    plot_feature(6, priors.eo, priors.No, 6, '1st Deriv (Edge) Orientation (degrees)');
     xlim([-180 180]); xticks([-180 0 180]);
     pos3 = get(gca, 'Position'); axes('Position', [pos3(1)+pos3(3)-0.01-sz3, pos3(2)+0.02, sz3, sz3]);
     imagesc([-1 0 1; -2 0 2; -1 0 1]); colormap(gca, gray); axis image off;
     
     % --- BAR FEATURES (Row 4) ---
     % 6. 2nd Deriv Magnitude / Bar (Dim 9)
-    plot_feature(7, cdfs.em2, cdfs.Nm2, 9, '2nd Deriv (Bar) Magnitude');
+    plot_feature(7, priors.em2, priors.Nm2, 9, '2nd Deriv (Bar) Magnitude');
     pos4 = get(gca, 'Position'); axes('Position', [pos4(1)+pos4(3)-0.01-sz3, pos4(2)+0.02, sz3, sz3]);
     imagesc([-1 2 -1; -1 2 -1; -1 2 -1]); colormap(gca, gray); axis image off;
 
     % 7. 2nd Deriv Orientation / Bar (Dim 10)
-    plot_feature(8, cdfs.eo2, cdfs.No2, 10, '2nd Deriv (Bar) Orientation (degrees)');
+    plot_feature(8, priors.eo2, priors.No2, 10, '2nd Deriv (Bar) Orientation (degrees)');
     xlim([-90 90]); xticks([-90 0 90]);
     pos5 = get(gca, 'Position'); axes('Position', [pos5(1)+pos5(3)-0.01-sz3, pos5(2)+0.02, sz3, sz3]);
     imagesc([-1 2 -1; -1 2 -1; -1 2 -1]); colormap(gca, gray); axis image off;

@@ -14,7 +14,7 @@ the external `vislab-common/data/` store (see `config.m`).
   `c` content, `b` border, `bc` border+content}; **`NO`** = **N**atural-image-trained + **O**TF
   (vs `BF`/`BFO` = Brodatz/Fabric); `ecc` = 1/2/4/8. Example: `dbndbcNO4`.
 - **`patch_pairs_<ecc>.mat`** — near/far training pairs at eccentricity `ecc` (produced by stage 3).
-- **`cdfs_abr_mo13_mo23_cs33[_otf].mat`** — see below (`mo13`=1st-deriv
+- **`priors_abr_mo13_mo23_cs33[_otf].mat`** — see below (`mo13`=1st-deriv
   magnitude/orientation, `mo23`=2nd-deriv magnitude/orientation, `cs33`=3×3 center-surround).
   (The LMS→ABR rotation is **not** shipped here — it is the lab-shared `cps_lms2abr_otf.mat` in
   `vislab-common/data/`; see below.)
@@ -26,7 +26,7 @@ The lab-global LMS→ABR colour transform, produced by stage 1 and consumed by a
 |---|---|---|
 | `coeff` | 3×3 | LMS→ABR rotation (PCA components); apply as `abr = lms * coeff` |
 
-## `cdfs_abr_mo13_mo23_cs33_otf.mat`  (stage 2 output)
+## `priors_abr_mo13_mo23_cs33_otf.mat`  (stage 2 output)
 Marginal cumulative distribution functions (the task-independent priors, paper Fig. 5). Each feature
 has an edge vector `e*` and cumulative-probability vector `N*` (from `histcounts(...,'Normalization','cdf')`).
 | vars | feature |

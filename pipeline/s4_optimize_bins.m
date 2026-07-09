@@ -14,7 +14,7 @@ function s4_optimize_bins(cfg, dim, ecc)
 %     n_bins     - double [n_features x n_ecc], counts
 %     eccs     - 1 x n_ecc eccentricities (columns); btype - 5 (natural).
 %
-%   Run `setup` first; run stages 2 (CDFs) and 3 (patch pairs for `ecc`) before.
+%   Run `setup` first; run stages 2 (priors) and 3 (patch pairs for `ecc`) before.
 %   Requires the IntClassNorm toolbox (classify_normals).
 %
 %   Inputs
@@ -28,9 +28,9 @@ function s4_optimize_bins(cfg, dim, ecc)
     psz = cfg.patch.size / ecc;
 
     % --- prior CDF for this feature (LMS->ABR rotation auto-loaded by apply_color_rotation) ---
-    if cfg.optics.apply, cdf_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, cdf_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
-    cdfs = load(fullfile(cfg.paths.models, cdf_file));
-    [cdf_x, cdf_p] = cdf_for_dim(cdfs, dim);
+    if cfg.optics.apply, prior_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, prior_file = 'priors_abr_mo13_mo23_cs33.mat'; end
+    priors = load(fullfile(cfg.paths.models, prior_file));
+    [prior_x, prior_p] = prior_for_dim(priors, dim);
 
     % --- near/far patch pairs (combined, from stage 3) ---
     pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
@@ -38,12 +38,12 @@ function s4_optimize_bins(cfg, dim, ecc)
     ptchf = pp.ptchf;
 
     % --- adaptive histogram equalization: greedy bin splitting ---
-    n_edges = numel(cdf_p);
+    n_edges = numel(prior_p);
     n_bins = 2;
     grown = n_bins;
-    [bounds, indices] = vislab.nat_stat_bayes.make_bins(cdf_x, cdf_p, n_bins);
-    bounds(1) = cdf_x(1);
-    bounds(n_bins + 1) = cdf_x(n_edges);
+    [bounds, indices] = vislab.nat_stat_bayes.make_bins(prior_x, prior_p, n_bins);
+    bounds(1) = prior_x(1);
+    bounds(n_bins + 1) = prior_x(n_edges);
 
     frozen = zeros(max_bins, 1);          % 1 = bin will not be split further
     prev_err = 1.0;
@@ -54,7 +54,7 @@ function s4_optimize_bins(cfg, dim, ecc)
         offset = 0;
         for i = 1:n_bins
             if frozen(i) == 0
-                [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, cdf_x, cdf_p);
+                [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, prior_x, prior_p);
                 err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg);
                 if (prev_err - err) / prev_err > err_crit
                     bounds = cand_bounds;
@@ -122,21 +122,21 @@ function [bin_bounds, n_bins_all, eccs] = load_or_init_bounds(out_path)
 end
 
 % ------------------------------------------------------------------------------
-function [cdf_x, cdf_p] = cdf_for_dim(cdfs, dim)
+function [prior_x, prior_p] = prior_for_dim(priors, dim)
 % Map a feature dimension to its prior CDF (edges, cumulative prob) in the file.
     switch dim
-        case 1,  cdf_x = cdfs.ea;   cdf_p = cdfs.Na;
-        case 2,  cdf_x = cdfs.eb;   cdf_p = cdfs.Nb;
-        case 3,  cdf_x = cdfs.er;   cdf_p = cdfs.Nr;
-        case 5,  cdf_x = cdfs.em;   cdf_p = cdfs.Nm;
-        case 6,  cdf_x = cdfs.eo;   cdf_p = cdfs.No;
-        case 7,  cdf_x = cdfs.emo;  cdf_p = cdfs.Nmo;
-        case 9,  cdf_x = cdfs.em2;  cdf_p = cdfs.Nm2;
-        case 10, cdf_x = cdfs.eo2;  cdf_p = cdfs.No2;
-        case 11, cdf_x = cdfs.emo2; cdf_p = cdfs.Nmo2;
-        case 12, cdf_x = cdfs.ecs1; cdf_p = cdfs.Ncs1;
-        case 13, cdf_x = cdfs.ecs2; cdf_p = cdfs.Ncs2;
-        case 14, cdf_x = cdfs.ecs4; cdf_p = cdfs.Ncs4;
+        case 1,  prior_x = priors.ea;   prior_p = priors.Na;
+        case 2,  prior_x = priors.eb;   prior_p = priors.Nb;
+        case 3,  prior_x = priors.er;   prior_p = priors.Nr;
+        case 5,  prior_x = priors.em;   prior_p = priors.Nm;
+        case 6,  prior_x = priors.eo;   prior_p = priors.No;
+        case 7,  prior_x = priors.emo;  prior_p = priors.Nmo;
+        case 9,  prior_x = priors.em2;  prior_p = priors.Nm2;
+        case 10, prior_x = priors.eo2;  prior_p = priors.No2;
+        case 11, prior_x = priors.emo2; prior_p = priors.Nmo2;
+        case 12, prior_x = priors.ecs1; prior_p = priors.Ncs1;
+        case 13, prior_x = priors.ecs2; prior_p = priors.Ncs2;
+        case 14, prior_x = priors.ecs4; prior_p = priors.Ncs4;
         otherwise
             error('s4:badDim', 'No CDF for feature dimension %d.', dim);
     end

@@ -1,20 +1,21 @@
-function s2_learn_feature_cdfs(cfg)
-% S2_LEARN_FEATURE_CDFS  Measure prior CDFs of task-independent features from natural images.
-%   s2_learn_feature_cdfs(cfg)
+function s2_learn_feature_priors(cfg)
+% S2_LEARN_FEATURE_PRIORS  Measure prior CDFs of task-independent features from natural images.
+%   s2_learn_feature_priors(cfg)
 %
 %   Pipeline stage 2 (was cdfs_of_features.m). Using the LMS->ABR rotation from
+%   Pipeline stage 2. Using the LMS->ABR rotation from
 %   stage 1, samples 1-deg patches from the natural images and accumulates:
 %     * ABR opponent colour-channel values (a, b, r)
 %     * 1st-derivative steerable responses (magnitude, orientation, mag x ori)
 %     * 2nd-derivative steerable responses (magnitude, orientation, mag x ori)
 %     * center-surround responses (ratio, small linear, large linear)
 %   then computes the marginal cumulative distribution functions (the paper's
-%   task-independent priors, Fig. 5) and saves them, with the rotation matrix,
-%   to data/models/cdfs_abr_mo13_mo23_cs33[_otf].mat.
+%   task-independent priors, Fig. 5). These 1D CDFs are the task-independent "feature priors". Saves the result
+%   to data/models/priors_abr_mo13_mo23_cs33[_otf].mat.
 %
 %   Run `setup` first; run stage 1 first (or ensure vislab-common/data/cps_lms2abr_otf.mat exists).
 %
-%   Fixes vs original: the large center-surround CDF (Ncs4) is now computed from
+%   Fixes vs original: the large center-surround prior (Ncs4) is now computed from
 %   its own data (csl4), not csl2 (a copy/paste bug) -- behaviour-changing for
 %   feature 14; regenerate downstream artifacts. Uses corrected vislab.lib.otf_filter.
 %   Diagnostic plots omitted.
@@ -110,14 +111,14 @@ function s2_learn_feature_cdfs(cfg)
     [Ncs2,ecs2]= histcounts(cs2v(1:n_cs2),      n_bins, 'Normalization', 'cdf');
     [Ncs4,ecs4]= histcounts(cs4v(1:n_cs4),      n_bins, 'Normalization', 'cdf');  % fix: was cs2v
 
-    if cfg.optics.apply, out_file = 'cdfs_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'cdfs_abr_mo13_mo23_cs33.mat'; end
+    if cfg.optics.apply, out_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'priors_abr_mo13_mo23_cs33.mat'; end
     out_path = fullfile(cfg.paths.models, out_file);
-    reply = input(sprintf('s2: Save feature CDFs to disk and overwrite %s? (y/n): ', out_file), 's');
+    reply = input(sprintf('s2: Save feature priors to disk and overwrite %s? (y/n): ', out_file), 's');
     if strcmpi(reply, 'y')
         save(out_path, 'ea','Na','eb','Nb','er','Nr','em','Nm','eo','No','emo','Nmo', ...
             'em2','Nm2','eo2','No2','emo2','Nmo2','ecs1','Ncs1','ecs2','Ncs2','ecs4','Ncs4','coeff');
-        fprintf('s2: saved feature CDFs to %s (%d patches from %d images)\n', out_path, numel(files)*nsmp, numel(files));
+        fprintf('s2: saved feature priors to %s (%d patches from %d images)\n', out_path, numel(files)*nsmp, numel(files));
     else
-        fprintf('s2: skipped saving feature CDFs.\n');
+        fprintf('s2: skipped saving feature priors.\n');
     end
 end
