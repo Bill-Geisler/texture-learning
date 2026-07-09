@@ -31,6 +31,8 @@ function s3_make_nearfar_pairs(cfg, ecc)
     pcnt = 0;
 
     for f = 1:numel(files)
+        [~, fname, fext] = fileparts(files{f});
+        fprintf('sampling %s\n', [fname, fext]);
         img = double(imread(files{f})) * 255 / maxval;
         if cfg.optics.apply
             img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);

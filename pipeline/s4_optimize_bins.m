@@ -46,7 +46,7 @@ function s4_optimize_bins(cfg, dims, ecc)
     end
 
     for dim = dims(:)'
-        fprintf('s4: Optimizing adaptive bins for dim %d...\n', dim);
+        fprintf('s4: Optimizing adaptive bins for feature "%s"...\n', cfg.features.names{dim});
         [prior_x, prior_p] = prior_for_dim(priors, dim);
 
         % --- adaptive histogram equalization: greedy bin splitting ---

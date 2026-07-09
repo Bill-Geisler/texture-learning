@@ -56,6 +56,21 @@ The `quickstart_demo.m` script demonstrates the entire model lifecycle. By chang
 quickstart_demo      % runs the demo according to the selected demo_type
 ```
 
+## Repository layout
+
+```
+texture-learning/
+├── setup.m, config.m         path bootstrap + central configuration
+├── pipeline/                 numbered pipeline stages s1..s7 (+ list_natural_images helper)
+├── +segmentation/            grouping algorithm (content-similarity, grouping, region scoring)
+├── +gtr/                     GTR stimulus generation (texture-region masks, texture assignment)
+├── data/models/              shipped trained artifacts (PCA, priors, AHEO bins, dbnd bounds)
+├── data/derived/             generated data (patch pairs, results) — git-ignored
+└── docs/                     papers
+```
+
+Shared low-level code lives in `vislab` (not here), so it isn't duplicated across the lab's repos.
+
 ## Model pipeline
 
 The demo runs these stages in order (each is a function taking `cfg`). Stages 1–5 learn the model from natural
@@ -141,25 +156,6 @@ The pipeline uses spot dims **[1 13 14]** and edge dims **[5 9 10]** in the cont
 | GTR | grown-texture-region image (random regions filled with random textures) |
 | `b0` | β, weak Fourier-power suppression constant |
 
-## Repository layout
-
-```
-texture-learning/
-├── setup.m, config.m         path bootstrap + central configuration
-├── pipeline/                 numbered pipeline stages s1..s7 (+ list_natural_images helper)
-├── +segmentation/            grouping algorithm (content-similarity, grouping, region scoring)
-├── +gtr/                     GTR stimulus generation (texture-region masks, texture assignment)
-├── data/models/              shipped trained artifacts (PCA, priors, AHEO bins, dbnd bounds)
-├── data/derived/             generated data (patch pairs, results) — git-ignored
-└── docs/                     papers
-```
-
-Shared low-level code lives in `vislab` (not here), so it isn't duplicated across the lab's repos.
-
-
-## Documentation
-
-- `../vislab-common/ARCHITECTURE.md` — how this repo, vislab, the toolboxes, and vislab-common/data fit together.
 
 ## License & citation
 

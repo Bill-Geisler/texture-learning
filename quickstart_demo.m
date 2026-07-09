@@ -32,7 +32,7 @@ cfg = config;
 % Set demo_type to 'quick' or 'full':
 %   'quick': Fast version using a few patch pairs and shipped decision boundaries.
 %   'full':  Load all patch pairs to actually train the decision bounds.
-demo_type = 'quick'; 
+demo_type = 'full'; 
 
 if strcmp(demo_type, 'full')
     fprintf('\n--- Running Pipeline Stages 1-5: Training the Model ---\n');
