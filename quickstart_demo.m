@@ -134,7 +134,7 @@ end
 
 [best, idx] = max(out6.pcav, [], 'all', 'linear');
 [gi, wi] = ind2sub(size(out6.pcav), idx);
-fprintf('\nStage 6 Result: peak mean near-far accuracy = %.1f%%\n', 100 * best);
+fprintf('\nStage 6 Result: peak mean same-different accuracy = %.1f%%\n', 100 * best);
 fprintf('        at criterion = %.2f, mutual-similarity weight = %.2f\n', out6.gc(gi), out6.wm(wi));
 plot_stage6(out6, method);
 drawnow;
@@ -235,6 +235,7 @@ function plot_stage2(cfg, ecc)
         subplot(4,2,ax_idx);
         pdf = diff([0, N]); % PDF from CDF
         plot(e(1:end-1), pdf, 'LineWidth', 2); hold on;
+        set(gca, 'YTick', []); % Remove y-axis ticks for PDF plots
         % ylim([0 1]); % Removed ylim because PDF can exceed 1 or have a different scale
         trunc_xlim(e, N);
         if has_bins && ~isempty(S.bin_bounds{dim, ecc_idx})
@@ -590,12 +591,12 @@ function plot_stage5(cfg, ecc, R_near, R_far)
 end
 
 function plot_stage6(out, method)
-    figure('Name', 'Stage 6: Near/Far Self-Supervised Performance', 'Position', [400 400 600 500]);
+    figure('Name', 'Stage 6: Same/Different Self-Supervised Performance', 'Position', [400 400 600 500]);
     imagesc(out.wm, out.gc, out.pcav); axis xy;
-    cb = colorbar; cb.Label.String = 'Near-Far Accuracy';
+    cb = colorbar; cb.Label.String = 'Same-Different Accuracy';
     xlabel('Mutual Similarity Weight');
     ylabel('Grouping Criterion');
-    title(sprintf('Near-far Discrimination Accuracy (%s, Dataset %d)', method, out.itype));
+    title(sprintf('Same-Different Discrimination Accuracy (%s, Dataset %d)', method, out.itype));
 end
 
 function plot_stage7(cfg, out, method, itype, ecc)
