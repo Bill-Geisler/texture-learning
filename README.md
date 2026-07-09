@@ -3,9 +3,9 @@
 Code for **"Proximity as a Ground-Truth Proxy for Training Texture Discrimination and Segmentation"**
 (W. S. Geisler, [bioRxiv 2026](https://www.biorxiv.org/content/10.64898/2026.05.12.724620v1.abstract)).
 
-## What it does
-
 ![Sample Segmentation](sample_segment.png)
+
+## What it does
 
 Telling whether two image patches are the *same* or *different* texture normally needs labelled ground
 truth. This project's idea is that **spatial proximity is a free proxy for that label** — nearby patches
