@@ -71,6 +71,20 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | 6 | `s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on GTR images built from Brodatz/Fabric source textures — see Quick demo) |
 | 7 | `s7_segment_gtr(cfg, method, itype, ecc, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
+## Model Data
+
+The pipeline saves its trained parameters and intermediate datasets as `.mat` files. Shipped, pre-trained parameters are located in `data/models/`, while generated files are saved to `data/derived/` (which is git-ignored).
+
+Here is a simple breakdown of the data files you'll encounter:
+
+- **`cps_lms2abr_otf.mat`**: The LMS→ABR color space transformation matrix (shared across the lab in `vislab-common/data/`).
+- **`priors_abr_mo13_mo23_cs33_otf.mat`**: The task-independent marginal probability distributions (priors) for the model's low-level image features.
+- **`patch_pairs_<ecc>.mat`**: Large datasets of *near* (likely same texture) and *far* (likely different texture) patch pairs, extracted directly from unlabelled natural images to train the model.
+- **`AHEO<btype><dim><ecc>.mat`**: Adaptive histogram bin boundaries used for discretizing the feature responses.
+- **`decision_bounds_ecc<ecc>.mat`**: The final trained quadratic decision boundaries for determining whether two patches belong to the same or different textures.
+
+*(Note: `<ecc>` refers to the spatial eccentricity or downsampling factor of the patches, typically 1, 2, 4, or 8).*
+
 ## Repository layout
 
 ```
@@ -81,7 +95,7 @@ texture-learning/
 ├── +gtr/                     GTR stimulus generation (texture-region masks, texture assignment)
 ├── data/models/              shipped trained artifacts (PCA, priors, AHEO bins, dbnd bounds)
 ├── data/derived/             generated data (patch pairs, results) — git-ignored
-└── docs/                     papers, GLOSSARY.md, DATA_DICTIONARY.md
+└── docs/                     papers, GLOSSARY.md
 ```
 
 Shared low-level code lives in `vislab` (not here), so it isn't duplicated across the lab's repos.
@@ -90,7 +104,6 @@ Shared low-level code lives in `vislab` (not here), so it isn't duplicated acros
 ## Documentation
 
 - `docs/GLOSSARY.md` — code names ↔ paper symbols ↔ meanings.
-- `docs/DATA_DICTIONARY.md` — contents of every `.mat` artifact and the filename codes.
 - `../vislab-common/ARCHITECTURE.md` — how this repo, vislab, the toolboxes, and vislab-common/data fit together.
 
 ## License & citation
