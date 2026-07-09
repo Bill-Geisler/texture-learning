@@ -591,12 +591,19 @@ function plot_stage5(cfg, ecc, R_near, R_far)
 end
 
 function plot_stage6(out, method)
-    figure('Name', 'Stage 6: Same/Different Self-Supervised Performance', 'Position', [400 400 600 500]);
+    figure('Name', 'Stage 6: Same/Different Self-Supervised Performance on GTR Patches', 'Position', [400 400 600 500]);
     imagesc(out.wm, out.gc, out.pcav); axis xy;
     cb = colorbar; cb.Label.String = 'Same-Different Accuracy';
     xlabel('Mutual Similarity Weight');
     ylabel('Grouping Criterion');
-    title(sprintf('Same-Different Discrimination Accuracy (%s, Dataset %d)', method, out.itype));
+    
+    m_str = method;
+    if strcmp(method, 'bc'), m_str = 'Border+Content'; end
+    
+    d_str = sprintf('Dataset %d', out.itype);
+    if out.itype == 3, d_str = 'Brodatz'; end
+    
+    title(sprintf('Same-Diff Accuracy on GTR Patches\\n(Method: %s, Dataset: %s)', m_str, d_str));
 end
 
 function plot_stage7(cfg, out, method, itype, ecc)
