@@ -56,10 +56,6 @@ has an edge vector `e*` and cumulative-probability vector `N*` (from `histcounts
 *(Note: the original saved three per-set files `patch_pairs_{9,10,12}<ecc>.mat`; the reorganized stage 3
 writes one combined file, which also fixed a per-set index bug.)*
 
-## `results{P,F,B,BF,V,M}.mat`  (stage 7 output — pending)
-Segmentation results per texture type (P=Pertex, F=Fabric, B=Brodatz, BF=Brodatz+Fabric, V=VisTex,
-M=McGill): region counts and accuracy surfaces over the grouping-criterion sweeps. Schema to be
-finalized when stage 7 is implemented (blocked on the texture-dataset layout — see `../../USER_TODO.md`).
 
 ## External inputs (in `vislab-common/data/`, not in this repo)
 - `CPS natural images/Set{9,10,12}_16_*.png` — 16-bit calibrated natural images (stages 1–3).
