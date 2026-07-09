@@ -10,9 +10,7 @@ the external `vislab-common/data/` store (see `config.m`).
   histogram equalization, trailing **O**=OTF applied (no `O` = no optics). Then three numbers:
   `btype` (bound type; 5 = natural images, 4 = Brodatz/Fabric), `dim` (feature 1–14), `ecc` (1/2/4/8).
   Example: `AHEO5131` = adaptive/OTF, natural-image btype 5, feature 13 (small linear center-surround), eccentricity 1.
-- **`dbnd<type>NO<ecc>.mat`** — trained decision-variable bound. `<type>` ∈ {`h` spot, `e` edge,
-  `c` content, `b` border, `bc` border+content}; **`NO`** = **N**atural-image-trained + **O**TF
-  (vs `BF`/`BFO` = Brodatz/Fabric); `ecc` = 1/2/4/8. Example: `dbndbcNO4`.
+- **`decision_bounds_ecc<ecc>.mat`** — trained decision-variable boundaries at eccentricity `ecc` (1/2/4/8). Example: `decision_bounds_ecc1.mat`. Contains a single struct `dbnd` with fields for spot (`.h`), edge (`.e`), content (`.c`), border (`.b`), and border+content (`.bc`). (Replaces individual files like `dbndhNO1.mat`).
 - **`patch_pairs_<ecc>.mat`** — near/far training pairs at eccentricity `ecc` (produced by stage 3).
 - **`priors_abr_mo13_mo23_cs33[_otf].mat`** — see below (`mo13`=1st-deriv
   magnitude/orientation, `mo23`=2nd-deriv magnitude/orientation, `cs33`=3×3 center-surround).
@@ -43,10 +41,10 @@ has an edge vector `e*` and cumulative-probability vector `N*` (from `histcounts
 | `bnds` | 1×nbnds | histogram bin edges for the feature (first/last are ±inf) |
 | `nbnds` | scalar | number of bin edges |
 
-## `dbnd{h,e,c,b,bc}NO<ecc>.mat`  (stage 5 output)
+## `decision_bounds_ecc<ecc>.mat`  (stage 5 output)
 | var | type | meaning |
 |---|---|---|
-| `dbndh` / `dbnde` / `dbndc` / `dbndb` / `dbndbc` | struct | quadratic decision boundary from `classify_normals` (`.samp_opt_bd`); turned into a DV function via `quad2fun`. h=spot, e=edge, c=content, b=border, bc=border+content |
+| `dbnd` | struct | Contains fields `.h`, `.e`, `.c`, `.b`, and `.bc`. Each is a quadratic decision boundary from `classify_normals` (`.samp_opt_bd`); turned into a DV function via `quad2fun`. h=spot, e=edge, c=content, b=border, bc=border+content |
 
 ## `patch_pairs_<ecc>.mat`  (stage 3 output, in data/derived/)
 | var | type | meaning |

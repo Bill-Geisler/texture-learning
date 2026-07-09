@@ -7,8 +7,8 @@ function s5_train_decision_vars(cfg, ecc, eccb)
 %   (near = "same", far = "different"), computes the power, spot, edge and border
 %   feature responses for all patch pairs, then trains quadratic decision bounds
 %   (via classify_normals) for, in order: spot (h), edge (e), content (c =
-%   power+spot+edge), border (b), and border+content (bc). Saves each bound to
-%   data/models/dbnd{h,e,c,b,bc}NO<ecc>.mat.
+%   power+spot+edge), border (b), and content). Saves the struct of all bounds to
+%   data/models/decision_bounds_ecc<ecc>.mat.
 %
 %   Run `setup` first; run stages 2-4 before. Requires IntClassNorm
 %   (classify_normals, quad2fun).
@@ -67,15 +67,17 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     dbndbc = train_bound(bc_near, bc_far);
 
     % save all bounds
+    dbnd.h  = dbndh;
+    dbnd.e  = dbnde;
+    dbnd.c  = dbndc;
+    dbnd.b  = dbndb;
+    dbnd.bc = dbndbc;
+    
     tag = num2str(ecc);
-    reply = input(sprintf('s5: Save decision variables to disk and overwrite dbnd{h,e,c,b,bc}NO%s.mat? (y/n): ', tag), 's');
+    reply = input(sprintf('s5: Save decision variables to disk and overwrite decision_bounds_ecc%s.mat? (y/n): ', tag), 's');
     if strcmpi(reply, 'y')
-        save_bound(cfg, ['dbndh'  'NO' tag], 'dbndh',  dbndh);
-        save_bound(cfg, ['dbnde'  'NO' tag], 'dbnde',  dbnde);
-        save_bound(cfg, ['dbndc'  'NO' tag], 'dbndc',  dbndc);
-        save_bound(cfg, ['dbndb'  'NO' tag], 'dbndb',  dbndb);
-        save_bound(cfg, ['dbndbc' 'NO' tag], 'dbndbc', dbndbc);
-        fprintf('s5: trained + saved dbnd{h,e,c,b,bc}NO%s (%d near, %d far pairs)\n', tag, size(near,1), size(far,1));
+        save(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
+        fprintf('s5: trained + saved decision_bounds_ecc%s (%d near, %d far pairs)\n', tag, size(near,1), size(far,1));
     else
         fprintf('s5: skipped saving decision variables.\n');
     end
@@ -129,10 +131,4 @@ function y = apply_dv(dv_fun, X)
     for i = 1:size(X, 1)
         y(i) = dv_fun(X(i, :)');
     end
-end
-
-% ------------------------------------------------------------------------------
-function save_bound(cfg, fname, varname, value)
-    S.(varname) = value;
-    save(fullfile(cfg.paths.models, [fname '.mat']), '-struct', 'S');
 end

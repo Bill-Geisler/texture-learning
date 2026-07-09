@@ -99,7 +99,7 @@ drawnow;
 
 % --- 1. check the shipped (or newly trained) artifacts are present ---
 needed = {'priors_abr_mo13_mo23_cs33_otf.mat', ...
-          'dbndhNO1.mat', 'dbndeNO1.mat', 'dbndcNO1.mat', 'dbndbNO1.mat', 'AHEO_bins.mat'};
+          'decision_bounds_ecc1.mat', 'AHEO_bins.mat'};
 present = cellfun(@(f) exist(fullfile(cfg.paths.models, f), 'file') > 0, needed);
 if ~all(present)
     error('demo:missingArtifacts', ...
@@ -347,10 +347,11 @@ function plot_stage5_intermediate(cfg, ecc, R_near, R_far)
     tag = num2str(ecc);
     
     try
-        S_h = load(fullfile(cfg.paths.models, ['dbndhNO' tag '.mat'])); dbndh = S_h.dbndh;
-        S_e = load(fullfile(cfg.paths.models, ['dbndeNO' tag '.mat'])); dbnde = S_e.dbnde;
-        S_c = load(fullfile(cfg.paths.models, ['dbndcNO' tag '.mat'])); dbndc = S_c.dbndc;
-        S_b = load(fullfile(cfg.paths.models, ['dbndbNO' tag '.mat'])); dbndb = S_b.dbndb;
+        S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
+        dbndh = S.dbnd.h;
+        dbnde = S.dbnd.e;
+        dbndc = S.dbnd.c;
+        dbndb = S.dbnd.b;
     catch
         return;
     end
@@ -487,11 +488,12 @@ function plot_stage5(cfg, ecc, R_near, R_far)
     
     % Load all necessary bounds
     try
-        dbndh = load(fullfile(cfg.paths.models, ['dbndhNO' tag '.mat'])); dbndh = dbndh.dbndh;
-        dbnde = load(fullfile(cfg.paths.models, ['dbndeNO' tag '.mat'])); dbnde = dbnde.dbnde;
-        dbndc = load(fullfile(cfg.paths.models, ['dbndcNO' tag '.mat'])); dbndc = dbndc.dbndc;
-        dbndb = load(fullfile(cfg.paths.models, ['dbndbNO' tag '.mat'])); dbndb = dbndb.dbndb;
-        dbndbc = load(fullfile(cfg.paths.models, ['dbndbcNO' tag '.mat'])); dbndbc = dbndbc.dbndbc;
+        S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
+        dbndh = S.dbnd.h;
+        dbnde = S.dbnd.e;
+        dbndc = S.dbnd.c;
+        dbndb = S.dbnd.b;
+        dbndbc = S.dbnd.bc;
     catch
         return;
     end
