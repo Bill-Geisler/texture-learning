@@ -223,8 +223,8 @@ function plot_stage2(cfg, ecc)
         ecc_idx = find(S.eccs == ecc, 1);
     end
     
-    figure('Name', 'Task-independent Priors, and task-optimized bins', 'Position', [100 100 800 1000]);
-    sgtitle('Task-independent Priors, and task-optimized bins');
+    figure('Name', 'Stage 2: Task-independent Priors, and task-optimized bins', 'Position', [100 100 800 1000]);
+    sgtitle('Stage 2: Task-independent Priors, and task-optimized bins');
     
     trunc_xlim = @(e, N) xlim([e(max(1, find(N >= 0.01, 1, 'first'))), e(max(1, find(N >= 0.99, 1, 'first')))]);
     
@@ -235,7 +235,10 @@ function plot_stage2(cfg, ecc)
     
     function plot_feature(ax_idx, e, N, dim, xl_str)
         subplot(4,2,ax_idx);
-        plot(e(1:end-1), N, 'LineWidth', 2); hold on; ylim([0 1]); trunc_xlim(e, N);
+        pdf = diff([0, N]); % PDF from CDF
+        plot(e(1:end-1), pdf, 'LineWidth', 2); hold on;
+        % ylim([0 1]); % Removed ylim because PDF can exceed 1 or have a different scale
+        trunc_xlim(e, N);
         if has_bins && ~isempty(S.bin_bounds{dim, ecc_idx})
             bnds = S.bin_bounds{dim, ecc_idx};
             for b = bnds', xline(b, 'k-', 'LineWidth', 0.5); end
