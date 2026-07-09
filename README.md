@@ -77,7 +77,7 @@ The pipeline saves its trained parameters and intermediate datasets as `.mat` fi
 
 Here is a simple breakdown of the data files you'll encounter:
 
-- **`cps_lms2abr_otf.mat`**: The LMS→ABR color space transformation matrix (shared across the lab in `vislab-common/data/`).
+- **`cps_lms2abr_otf.mat`**: The LMS→ABR color space transformation matrix. This file is **not** duplicated in this repository; it lives exclusively in the lab's shared `vislab-common/data/` folder so all projects use the exact same calibration.
 - **`priors_abr_mo13_mo23_cs33_otf.mat`**: The task-independent marginal probability distributions (priors) for the model's low-level image features.
 - **`patch_pairs_<ecc>.mat`**: Large datasets of *near* (likely same texture) and *far* (likely different texture) patch pairs, extracted directly from unlabelled natural images to train the model.
 - **`AHEO<btype><dim><ecc>.mat`**: Adaptive histogram bin boundaries used for discretizing the feature responses.
