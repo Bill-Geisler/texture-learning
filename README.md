@@ -47,13 +47,13 @@ cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab-common
 
 ## Quick demo
 
-The `quickstart_demo.m` script demonstrates the entire model lifecycle. By changing the `demo_type` variable at the top of the script, you can run it in two modes:
+The `run_demo.m` script demonstrates the entire model lifecycle. By changing the `demo_type` variable at the top of the script, you can run it in two modes:
 
 - **`quick` mode**: Skips the expensive training phase (Stages 1-5) and uses the pre-trained models shipped in `data/models/`. It plots the learned parameters, and then evaluates the model (Stages 6-7) on a small set of Grown-Texture-Region (GTR) images. The evaluation takes a few minutes to run.
 - **`full` mode**: Re-trains the model from scratch (Stages 1-5) before evaluating. During training, the script will pause to ask if you want to save (and overwrite) the newly-learned parameters to disk.
 
 ```matlab
-quickstart_demo      % runs the demo according to the selected demo_type
+run_demo      % runs the demo according to the selected demo_type
 ```
 
 ## Repository layout

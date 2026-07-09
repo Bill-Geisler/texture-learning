@@ -1,7 +1,7 @@
-% quickstart_demo.m  —  End-to-end demonstration of the texture-learning pipeline.
+% run_demo.m  —  End-to-end demonstration of the texture-learning pipeline.
 %
-%   Run it (from anywhere):   >> run <path-to-repo>/quickstart_demo.m
-%   or:   >> cd <repo>; setup; run quickstart_demo.m
+%   Run it (from anywhere):   >> run <path-to-repo>/run_demo.m
+%   or:   >> cd <repo>; setup; run run_demo.m
 %
 % What it does:
 %   Demonstrates the entire texture-learning pipeline described in the 
