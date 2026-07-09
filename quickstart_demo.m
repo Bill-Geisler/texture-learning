@@ -603,7 +603,7 @@ function plot_stage6(out, method)
     d_str = sprintf('Dataset %d', out.itype);
     if out.itype == 3, d_str = 'Brodatz'; end
     
-    title(sprintf('Same-Diff Accuracy on GTR Patches\\n(Method: %s, Dataset: %s)', m_str, d_str));
+    title(sprintf('Same-Diff Accuracy on GTR Patches (Method: %s, Texture set: %s)', m_str, d_str));
 end
 
 function plot_stage7(cfg, out, method, itype, ecc)
