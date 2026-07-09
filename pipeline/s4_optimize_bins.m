@@ -1,15 +1,15 @@
-function s4_optimize_bins(cfg, dim, ecc)
-% S4_OPTIMIZE_BINS  Learn adaptive-histogram bin bounds for one feature/eccentricity.
-%   s4_optimize_bins(cfg, dim, ecc)
+function s4_optimize_bins(cfg, dims, ecc)
+% S4_OPTIMIZE_BINS  Learn adaptive-histogram bin bounds for feature(s)/eccentricity.
+%   s4_optimize_bins(cfg, dims, ecc)
 %
 %   Pipeline stage 4 (was opt_bins_nat.m + test_bnds_nat.m). Using the prior CDF
-%   of feature `dim` (from stage 2) and the near/far patch pairs (stage 3),
+%   of features in `dims` (from stage 2) and the near/far patch pairs (stage 3),
 %   greedily splits histogram bins (adaptive histogram equalization): a split is
 %   kept if it reduces the proximity (near-vs-far) classification error by more
 %   than a criterion fraction. The learned bounds are stored in ONE consolidated
 %   file holding all features x eccentricities -- data/models/AHEO_bins.mat
 %   (optics applied) or AHE_bins.mat (no optics). Each call to this function
-%   updates the (dim, ecc) slot of that file (read-modify-write). File structure:
+%   updates the (dims, ecc) slots of that file (read-modify-write). File structure:
 %     bin_bounds - cell [n_features x n_ecc], bin_bounds{f,e} = column of bin edges
 %     n_bins     - double [n_features x n_ecc], counts
 %     eccs     - 1 x n_ecc eccentricities (columns); btype - 5 (natural).
@@ -18,72 +18,24 @@ function s4_optimize_bins(cfg, dim, ecc)
 %   Requires the IntClassNorm toolbox (classify_normals).
 %
 %   Inputs
-%     cfg - config struct (see config.m).
-%     dim - feature dimension (1,5,6,7,9,10,11,13,14; see cfg.features.names).
-%     ecc - eccentricity downsample factor (1,2,4,8).
+%     cfg  - config struct (see config.m).
+%     dims - feature dimension(s) (e.g. [1 5 6 7 9 10 11 13 14]; see cfg.features.names).
+%     ecc  - eccentricity downsample factor (1,2,4,8).
 
     btype   = 5;                          % bound type: natural images = 5
     err_crit = 0.002;                     % min fractional error reduction to keep a split
     max_bins = 100;
     psz = cfg.patch.size / ecc;
 
-    % --- prior CDF for this feature (LMS->ABR rotation auto-loaded by apply_color_rotation) ---
+    % --- load priors and patch pairs ONCE for all dims ---
     if cfg.optics.apply, prior_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, prior_file = 'priors_abr_mo13_mo23_cs33.mat'; end
     priors = load(fullfile(cfg.paths.models, prior_file));
-    [prior_x, prior_p] = prior_for_dim(priors, dim);
 
-    % --- near/far patch pairs (combined, from stage 3) ---
     pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
     ptchn = pp.ptchn;
     ptchf = pp.ptchf;
 
-    % --- adaptive histogram equalization: greedy bin splitting ---
-    n_edges = numel(prior_p);
-    n_bins = 2;
-    grown = n_bins;
-    [bounds, indices] = vislab.nat_stat_bayes.make_bins(prior_x, prior_p, n_bins);
-    bounds(1) = prior_x(1);
-    bounds(n_bins + 1) = prior_x(n_edges);
-
-    frozen = zeros(max_bins, 1);          % 1 = bin will not be split further
-    prev_err = 1.0;
-
-    done = false;
-    while ~done
-        n_bins = grown;
-        offset = 0;
-        for i = 1:n_bins
-            if frozen(i) == 0
-                [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, prior_x, prior_p);
-                err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg);
-                if (prev_err - err) / prev_err > err_crit
-                    bounds = cand_bounds;
-                    indices = cand_indices;
-                    prev_err = err;
-                    grown = grown + 1;
-                    offset = offset + 1;
-                    for j = grown:-1:i
-                        if frozen(j) == 1
-                            frozen(j) = 0;
-                            frozen(j + 1) = 1;
-                        end
-                    end
-                else
-                    frozen(i) = 1;
-                end
-            end
-        end
-        if n_bins == grown
-            done = true;
-        end
-    end
-    nbnds = n_bins + 1;
-    bnds = bounds(:);                      % column of bin edges for this (dim, ecc)
-
-    % --- store into the consolidated bin-bounds file (one file for all features x
-    %     eccentricities; see load_bin_bounds for the exact structure). Each
-    %     call updates just the (dim, ecc) slot: read the file if it exists, set the
-    %     slot, write back. (Sequential pipeline, so no read/write race.)
+    % --- store into the consolidated bin-bounds file
     if cfg.optics.apply, file = 'AHEO_bins.mat'; else, file = 'AHE_bins.mat'; end
     out_path = fullfile(cfg.paths.models, file);
     [bin_bounds, n_bins_all, eccs] = load_or_init_bounds(out_path);
@@ -92,15 +44,68 @@ function s4_optimize_bins(cfg, dim, ecc)
         eccs(end+1) = ecc;               % new eccentricity column
         ecc_idx = numel(eccs);
     end
-    bin_bounds{dim, ecc_idx} = bnds;
-    n_bins_all(dim, ecc_idx) = nbnds;
+
+    for dim = dims(:)'
+        fprintf('s4: Optimizing adaptive bins for dim %d...\n', dim);
+        [prior_x, prior_p] = prior_for_dim(priors, dim);
+
+        % --- adaptive histogram equalization: greedy bin splitting ---
+        n_edges = numel(prior_p);
+        n_bins = 2;
+        grown = n_bins;
+        [bounds, indices] = vislab.nat_stat_bayes.make_bins(prior_x, prior_p, n_bins);
+        bounds(1) = prior_x(1);
+        bounds(n_bins + 1) = prior_x(n_edges);
+
+        frozen = zeros(max_bins, 1);          % 1 = bin will not be split further
+        prev_err = 1.0;
+
+        done = false;
+        while ~done
+            n_bins = grown;
+            offset = 0;
+            for i = 1:n_bins
+                if frozen(i) == 0
+                    [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, prior_x, prior_p);
+                    err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg);
+                    if (prev_err - err) / prev_err > err_crit
+                        bounds = cand_bounds;
+                        indices = cand_indices;
+                        prev_err = err;
+                        grown = grown + 1;
+                        offset = offset + 1;
+                        for j = grown:-1:i
+                            if frozen(j) == 1
+                                frozen(j) = 0;
+                                frozen(j + 1) = 1;
+                            end
+                        end
+                    else
+                        frozen(i) = 1;
+                    end
+                end
+            end
+            if n_bins == grown
+                done = true;
+            end
+        end
+        nbnds = n_bins + 1;
+        bin_bounds{dim, ecc_idx} = bounds(:);  % column of bin edges for this (dim, ecc)
+        n_bins_all(dim, ecc_idx) = nbnds;
+    end
+
     out = struct('bin_bounds', {bin_bounds}, 'n_bins', n_bins_all, 'eccs', eccs, 'btype', btype);
-    reply = input(sprintf('s4: Save bin bounds to disk and overwrite %s for dim %d? (y/n): ', file, dim), 's');
+    if numel(dims) > 1
+        dim_str = sprintf('[%s]', num2str(dims(:)'));
+    else
+        dim_str = num2str(dims);
+    end
+    reply = input(sprintf('s4: Save bin bounds to disk and overwrite %s for dims %s? (y/n): ', file, dim_str), 's');
     if strcmpi(reply, 'y')
         save(out_path, '-struct', 'out');
-        fprintf('s4: dim %d ecc %d -> %d bounds; updated %s\n', dim, ecc, nbnds, out_path);
+        fprintf('s4: dims %s ecc %d -> updated %s\n', dim_str, ecc, out_path);
     else
-        fprintf('s4: skipped saving bin bounds for dim %d.\n', dim);
+        fprintf('s4: skipped saving bin bounds for dims %s.\n', dim_str);
     end
 end
 

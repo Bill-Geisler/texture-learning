@@ -67,10 +67,8 @@ if strcmp(demo_type, 'full')
     % For each feature dimension, we discretize the feature space into adaptive bins.
     % This prepares the data to estimate the task-specific feature likelihoods (i.e.
     % probability distributions of features for near vs. far pairs).
-    for dim = [1 5 6 7 9 10 11 13 14]
-        fprintf('-> Running Stage 4: s4_optimize_bins for dim %d...\n', dim);
-        s4_optimize_bins(cfg, dim, ecc);
-    end
+    fprintf('-> Running Stage 4: s4_optimize_bins...\n');
+    s4_optimize_bins(cfg, [1 5 6 7 9 10 11 13 14], ecc);
 
     % Stage 5: Train Decision Variables and Bounds
     % Using the near/far pairs as ground truth, we train the Bayesian decision variables 
@@ -92,7 +90,7 @@ ecc = 1;
     plot_stage2(cfg, ecc);
     plot_stage3(cfg, ecc);
     
-    fprintf('\n--- Computing true patch responses for Stage 5 Demo (n=150) ---\n');
+    fprintf('\n--- Computing patch responses for Stage 5 Demo (n=150) ---\n');
     [R_near, R_far] = compute_demo_responses(cfg, ecc);
     
     plot_stage5_intermediate(cfg, ecc, R_near, R_far);
