@@ -7,7 +7,7 @@ function s3_make_nearfar_pairs(cfg, ecc)
 %   ecc) sample reference patches and form, per reference, two NEAR pairs (the
 %   reference with its right and lower neighbours) and two FAR pairs (the
 %   reference with patches sampled beyond a distance criterion). Saves the
-%   combined pairs to data/derived/patch_pairs_<ecc>.mat.
+%   combined pairs to data/stimuli/patch_pairs_<ecc>.mat.
 %
 %   Run `setup` first. ecc is the downsample factor (1, 2, 4, 8).
 %
@@ -67,8 +67,8 @@ function s3_make_nearfar_pairs(cfg, ecc)
     ptchn = ptchn(:, :, :, 1:pcnt);
     ptchf = ptchf(:, :, :, 1:pcnt);
 
-    if ~isfolder(cfg.paths.derived), mkdir(cfg.paths.derived); end
-    out_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
+    if ~isfolder(cfg.paths.stimuli), mkdir(cfg.paths.stimuli); end
+    out_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc));
     reply = input(sprintf('s3: Save near/far patch pairs to disk and overwrite patch_pairs_%d.mat? (y/n): ', ecc), 's');
     if strcmpi(reply, 'y')
         save(out_path, 'ptchn', 'ptchf', 'pcnt');

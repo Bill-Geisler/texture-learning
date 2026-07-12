@@ -37,7 +37,7 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     % (LMS->ABR rotation is auto-loaded by apply_color_rotation from the shared store)
 
-    pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
+    pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
 
     % response matrices: columns [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2], rows = kept pairs
     near = pair_responses(pp.ptchn, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);

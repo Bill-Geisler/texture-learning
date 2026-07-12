@@ -32,7 +32,7 @@ cfg = config;
 % Set demo_type to 'quick' or 'full':
 %   'quick': Fast version using a few patch pairs and shipped decision boundaries.
 %   'full':  Load all patch pairs to actually train the decision bounds.
-demo_type = 'full'; 
+demo_type = 'quick'; 
 
 if strcmp(demo_type, 'full')
     fprintf('\n--- Running Pipeline Stages 1-5: Training the Model ---\n');
@@ -286,7 +286,7 @@ function plot_stage2(cfg, ecc)
 end
 
 function plot_stage3(cfg, ecc)
-    out_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
+    out_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc));
     
     n_show = 5;
     near_pairs = cell(n_show, 2);
@@ -703,9 +703,9 @@ function [near, far] = compute_demo_responses(cfg, ecc)
 
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     
-    pp_path = fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc));
+    pp_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc));
     if ~isfile(pp_path)
-        % Fallback: Synthesize patches if derived data isn't built yet
+        % Fallback: Synthesize patches if stimuli data isn't built yet
         img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
         if ~isfile(img_path)
             fprintf('True CPS natural image not found. Skipping Stage 5 true evaluation.\n');

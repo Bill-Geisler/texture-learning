@@ -16,7 +16,7 @@ function cfg = config()
     cfg.paths.natural_images = fullfile(cfg.paths.data_root, 'CPS natural images');
     cfg.paths.textures       = fullfile(cfg.paths.data_root, 'textures');
     cfg.paths.models         = fullfile(repo_root, 'data', 'models');      % shipped trained artifacts
-    cfg.paths.derived        = fullfile(repo_root, 'data', 'derived');     % generated (patch pairs, results)
+    cfg.paths.stimuli        = fullfile(repo_root, 'data', 'stimuli');     % generated (patch pairs, results)
 
     % --- eye optics (Watson OTF) ---
     cfg.optics.ppd            = 60;      % pixels/deg for GTR images / display stimuli

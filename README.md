@@ -65,7 +65,7 @@ texture-learning/
 ├── +segmentation/            grouping algorithm (content-similarity, grouping, region scoring)
 ├── +gtr/                     GTR stimulus generation (texture-region masks, texture assignment)
 ├── data/models/              shipped trained artifacts (PCA, priors, AHEO bins, dbnd bounds)
-├── data/derived/             generated data (patch pairs, results) — git-ignored
+├── data/stimuli/             generated data (patch pairs, results) — git-ignored
 └── docs/                     papers
 ```
 
@@ -88,7 +88,7 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 
 ## Model Data
 
-The pipeline saves its trained parameters and intermediate datasets as `.mat` files. Shipped, pre-trained parameters are located in `data/models/`, while generated files are saved to `data/derived/` (which is git-ignored).
+The pipeline saves its trained parameters and intermediate datasets as `.mat` files. Shipped, pre-trained parameters are located in `data/models/`, while generated files are saved to `data/stimuli/` (which is git-ignored).
 
 Here is a simple breakdown of the data files you'll encounter:
 

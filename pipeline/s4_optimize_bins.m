@@ -31,7 +31,7 @@ function s4_optimize_bins(cfg, dims, ecc)
     if cfg.optics.apply, prior_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, prior_file = 'priors_abr_mo13_mo23_cs33.mat'; end
     priors = load(fullfile(cfg.paths.models, prior_file));
 
-    pp = load(fullfile(cfg.paths.derived, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
+    pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
     ptchn = pp.ptchn;
     ptchf = pp.ptchf;
 
