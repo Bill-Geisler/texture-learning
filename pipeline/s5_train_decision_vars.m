@@ -37,7 +37,7 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     % (LMS->ABR rotation is auto-loaded by apply_color_rotation from the shared store)
 
-    pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
+    pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_ecc%d.mat', ecc)), 'ptchn', 'ptchf');
 
     % response matrices: columns [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2], rows = kept pairs
     near = pair_responses(pp.ptchn, bin_bounds, n_bins, feature_list, nh, ne, b0, thresh, psz, cfg);
@@ -93,8 +93,10 @@ function R = pair_responses(patches, bin_bounds, n_bins, feature_list, nh, ne, b
     R = zeros(n_pairs, 9);
     n = 0;
     for i = 1:n_pairs
-        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3));
-        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
+        % patches are stored as A (1-channel); patch_to_a passes them through. Older
+        % 3-channel LMS files are normalized+rotated to A here instead (same result).
+        p1 = vislab.nat_stat_bayes.patch_to_a(patches(1:psz, 1:psz, :, i),       m0, c0);
+        p2 = vislab.nat_stat_bayes.patch_to_a(patches(1:psz, psz+1:2*psz, :, i), m0, c0);
         a1 = p1(:, :, 1);
         a2 = p2(:, :, 1);
 

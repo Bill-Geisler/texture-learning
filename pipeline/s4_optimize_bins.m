@@ -31,7 +31,7 @@ function s4_optimize_bins(cfg, dims, ecc)
     if cfg.optics.apply, prior_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, prior_file = 'priors_abr_mo13_mo23_cs33.mat'; end
     priors = load(fullfile(cfg.paths.models, prior_file));
 
-    pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc)), 'ptchn', 'ptchf');
+    pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_ecc%d.mat', ecc)), 'ptchn', 'ptchf');
     ptchn = pp.ptchn;
     ptchf = pp.ptchf;
 
@@ -180,8 +180,10 @@ function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_
     vals = zeros(n_pairs, 1);
     n = 0;
     for i = 1:n_pairs
-        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3));
-        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
+        % patches are stored as A (1-channel); patch_to_a passes them through. Older
+        % 3-channel LMS files are normalized+rotated to A here instead (same result).
+        p1 = vislab.nat_stat_bayes.patch_to_a(patches(1:psz, 1:psz, :, i),       m0, c0);
+        p2 = vislab.nat_stat_bayes.patch_to_a(patches(1:psz, psz+1:2*psz, :, i), m0, c0);
         if is_edge
             a1 = vislab.lib.cntrst_norm(p1(:, :, 1), c0, psz);
             a2 = vislab.lib.cntrst_norm(p2(:, :, 1), c0, psz);

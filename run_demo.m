@@ -286,7 +286,7 @@ function plot_stage2(cfg, ecc)
 end
 
 function plot_stage3(cfg, ecc)
-    out_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc));
+    out_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_ecc%d.mat', ecc));
     
     n_show = 5;
     near_pairs = cell(n_show, 2);
@@ -703,7 +703,7 @@ function [near, far] = compute_demo_responses(cfg, ecc)
 
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     
-    pp_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc));
+    pp_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_ecc%d.mat', ecc));
     if ~isfile(pp_path)
         % Fallback: Synthesize patches if stimuli data isn't built yet
         img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
@@ -748,8 +748,10 @@ function R = pair_responses(patches, bin_bounds, n_bins, feature_list, nh, ne, b
     R = zeros(n_pairs, 9);
     n = 0;
     for i = 1:n_pairs
-        p1 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, 1:psz, :, i),       m0, c0, 3, 3));
-        p2 = vislab.nat_stat_bayes.apply_color_rotation(vislab.lib.ptch_norm(patches(1:psz, psz+1:2*psz, :, i), m0, c0, 3, 3));
+        % Stored pairs are A (1-channel) -> passthrough; the synth fallback builds
+        % 3-channel patches -> normalized+rotated to A here (same as before).
+        p1 = vislab.nat_stat_bayes.patch_to_a(patches(1:psz, 1:psz, :, i),       m0, c0);
+        p2 = vislab.nat_stat_bayes.patch_to_a(patches(1:psz, psz+1:2*psz, :, i), m0, c0);
         a1 = p1(:, :, 1);
         a2 = p2(:, :, 1);
 

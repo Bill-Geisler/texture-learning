@@ -19,8 +19,10 @@ function cfg = config()
     cfg.paths.stimuli        = fullfile(repo_root, 'data', 'stimuli');     % generated (patch pairs, results)
 
     % --- eye optics (Watson OTF) ---
-    cfg.optics.ppd            = 60;      % pixels/deg for GTR images / display stimuli
-    cfg.optics.ppd_natural    = 64;      % pixels/deg for the calibrated natural images (64 px = 1 deg)
+    cfg.optics.ppd            = 60;      % pixels/deg for ALL images (natural, textures, GTR/display):
+                                         % the human psychophysics display resolution. (Was 64 for the
+                                         % calibrated natural images; unified to 60 -- requires
+                                         % regenerating s1-s5 artifacts. See cnn/cnn_plan.md.)
     cfg.optics.pupil_diameter = 4;       % mm
     cfg.optics.wavelength     = 550;     % nm
     cfg.optics.apply          = true;    % apply optics (the "_otf" / filter == 1 path)
@@ -38,6 +40,16 @@ function cfg = config()
     % --- patch geometry at eccentricity 1 (fovea); divide by the eccentricity for the periphery ---
     cfg.patch.image_size = 640;   % GTR image size in pixels (eccentricity 1, fovea)
     cfg.patch.size       = 64;    % 1-deg patch size in pixels (eccentricity 1, fovea)
+
+    % --- texture-database ingestion flags (single source, used by both the Bayesian
+    %     load_texture_images and the CNN texture test set via source_to_lms):
+    %       ext    file extension           gray   grayscale sheet -> replicate to 3 channels
+    %       gamma  linearize gamma-compressed sheet   resize  1024px pertex sheet -> image_size ---
+    cfg.textures.brodatz = struct('ext','gif','gray',true, 'gamma',false,'resize',false);
+    cfg.textures.fabric  = struct('ext','png','gray',false,'gamma',true, 'resize',false);
+    cfg.textures.mcgill  = struct('ext','png','gray',false,'gamma',true, 'resize',false);
+    cfg.textures.vistex  = struct('ext','png','gray',false,'gamma',true, 'resize',false);
+    cfg.textures.pertex  = struct('ext','png','gray',true, 'gamma',false,'resize',true);
 
     % --- luminance/contrast normalization ---
     cfg.norm.target_mean     = 128;

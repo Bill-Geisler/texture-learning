@@ -7,7 +7,7 @@ function s3_make_nearfar_pairs(cfg, ecc)
 %   ecc) sample reference patches and form, per reference, two NEAR pairs (the
 %   reference with its right and lower neighbours) and two FAR pairs (the
 %   reference with patches sampled beyond a distance criterion). Saves the
-%   combined pairs to data/stimuli/patch_pairs_<ecc>.mat.
+%   combined pairs to data/stimuli/patch_pairs_ecc<ecc>.mat.
 %
 %   Run `setup` first. ecc is the downsample factor (1, 2, 4, 8).
 %
@@ -15,52 +15,56 @@ function s3_make_nearfar_pairs(cfg, ecc)
 %     * one combined output file (ptchn/ptchf/pcnt) instead of three per-set
 %       files -- this also removes the Set-12 slice index bug in the original.
 %     * per-image image size (szx/szy/dcrit) instead of reusing Set-9's values.
-%     * uses cfg.optics.ppd_natural (64) for the OTF, matching stages 1-2; the
-%       original used 60 here (likely a stray display value) -- flagged for Geisler.
+%     * uses cfg.optics.ppd (60) for the OTF, matching stages 1-2 and the texture
+%       test path -- 60 is the human psychophysics display resolution, unified across
+%       all images (was briefly 64 for natural images; reverted to 60).
 
     psz  = cfg.patch.size / ecc;         % patch size at this eccentricity
     psz2 = 2 * psz;
-    n_colr = 3;
-    maxval = cfg.natural.max_val;        % patches are stored raw (LMS); normalized in later stages
+    maxval = cfg.natural.max_val;
+    m0 = cfg.norm.target_mean;           % per-patch normalize (before rotate) via patch_to_a
+    c0 = cfg.norm.target_contrast;
 
     files = list_natural_images(cfg);
     nsmp = ceil(cfg.natural.target_nearfar_references / numel(files));
     max_pairs = numel(files) * nsmp * 2;
-    ptchn = zeros(psz, psz2, n_colr, max_pairs);
-    ptchf = zeros(psz, psz2, n_colr, max_pairs);
+    % Patches are stored as the ACHROMATIC (A) channel only (1-channel). Each half is
+    % normalized (ptch_norm type 3) then rotated LMS->ABR and A is kept, via the shared
+    % vislab.nat_stat_bayes.patch_to_a -- the same order the downstream DV code used, so
+    % results are unchanged; downstream just reads A directly. See cnn/cnn_plan.md.
+    ptchn = zeros(psz, psz2, 1, max_pairs);
+    ptchf = zeros(psz, psz2, 1, max_pairs);
     pcnt = 0;
 
     for f = 1:numel(files)
         [~, fname, fext] = fileparts(files{f});
         fprintf('sampling %s\n', [fname, fext]);
-        img = double(imread(files{f})) * 255 / maxval;
-        if cfg.optics.apply
-            img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
-        end
-        img = vislab.lib.rgb2lms(img);                % shared lab RGB->LMS calibration
-        img = vislab.lib.downsample(img, ecc);
+        img = vislab.nat_stat_bayes.source_to_lms(files{f}, cfg, struct('prescale', 255/maxval, 'ecc', ecc));
         [szx, szy, ~] = size(img);
         dcrit = szx / 4;                 % far-pair distance criterion
 
         for k = 1:nsmp
             x = randi(szx - psz2);
             y = randi(szy - psz2);
-            ref = img(x:x+psz-1, y:y+psz-1, :);
+            a_ref = vislab.nat_stat_bayes.patch_to_a(img(x:x+psz-1, y:y+psz-1, :), m0, c0);
 
             % near/far RIGHT pairs (reference alongside a right-hand patch)
             pcnt = pcnt + 1;
-            ptchn(:, :, :, pcnt) = cat(2, ref, img(x:x+psz-1, y+psz:y+psz2-1, :));
+            a_right = vislab.nat_stat_bayes.patch_to_a(img(x:x+psz-1, y+psz:y+psz2-1, :), m0, c0);
+            ptchn(:, :, 1, pcnt) = cat(2, a_ref, a_right);
             [xf, yf] = sample_far(szx, szy, psz2, x, y, dcrit);
-            ptchf(:, :, :, pcnt) = cat(2, ref, img(xf:xf+psz-1, yf+psz:yf+psz2-1, :));
+            a_far = vislab.nat_stat_bayes.patch_to_a(img(xf:xf+psz-1, yf+psz:yf+psz2-1, :), m0, c0);
+            ptchf(:, :, 1, pcnt) = cat(2, a_ref, a_far);
 
-            % near/far DOWN pairs (transposed so a vertical pair reads horizontally)
-            ref_t = transpose_channels(ref);
+            % near/far DOWN pairs (transposed so a vertical pair reads horizontally).
+            % Transpose commutes with normalize+rotate, so transpose the A directly.
+            a_ref_t = a_ref.';
             pcnt = pcnt + 1;
-            below = transpose_channels(img(x+psz:x+psz2-1, y:y+psz-1, :));
-            ptchn(:, :, :, pcnt) = cat(2, ref_t, below);
+            a_below = vislab.nat_stat_bayes.patch_to_a(img(x+psz:x+psz2-1, y:y+psz-1, :), m0, c0).';
+            ptchn(:, :, 1, pcnt) = cat(2, a_ref_t, a_below);
             [xf, yf] = sample_far(szx, szy, psz2, x, y, dcrit);
-            far_below = transpose_channels(img(xf:xf+psz-1, yf+psz:yf+psz2-1, :));
-            ptchf(:, :, :, pcnt) = cat(2, ref_t, far_below);
+            a_far_below = vislab.nat_stat_bayes.patch_to_a(img(xf:xf+psz-1, yf+psz:yf+psz2-1, :), m0, c0).';
+            ptchf(:, :, 1, pcnt) = cat(2, a_ref_t, a_far_below);
         end
     end
 
@@ -68,8 +72,8 @@ function s3_make_nearfar_pairs(cfg, ecc)
     ptchf = ptchf(:, :, :, 1:pcnt);
 
     if ~isfolder(cfg.paths.stimuli), mkdir(cfg.paths.stimuli); end
-    out_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_%d.mat', ecc));
-    reply = input(sprintf('s3: Save near/far patch pairs to disk and overwrite patch_pairs_%d.mat? (y/n): ', ecc), 's');
+    out_path = fullfile(cfg.paths.stimuli, sprintf('patch_pairs_ecc%d.mat', ecc));
+    reply = input(sprintf('s3: Save near/far patch pairs to disk and overwrite patch_pairs_ecc%d.mat? (y/n): ', ecc), 's');
     if strcmpi(reply, 'y')
         save(out_path, 'ptchn', 'ptchf', 'pcnt');
         fprintf('s3: saved %d near/far patch pairs (ecc %d) to %s\n', pcnt, ecc, out_path);
@@ -86,12 +90,5 @@ function [xf, yf] = sample_far(szx, szy, psz2, x, y, dcrit)
         if sqrt((xf - x)^2 + (yf - y)^2) > dcrit
             return;
         end
-    end
-end
-
-function p = transpose_channels(p)
-% Transpose each colour channel of a patch.
-    for c = 1:size(p, 3)
-        p(:, :, c) = p(:, :, c).';
     end
 end

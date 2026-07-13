@@ -49,11 +49,7 @@ function s2_learn_feature_priors(cfg)
     for f = 1:numel(files)
         [~, fname, fext] = fileparts(files{f});
         fprintf('sampling %s\n', [fname, fext]);
-        img = double(imread(files{f})) * 255 / maxval;
-        if cfg.optics.apply
-            img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
-        end
-        img_lms = vislab.lib.rgb2lms(img);            % shared lab RGB->LMS calibration
+        img_lms = vislab.nat_stat_bayes.source_to_lms(files{f}, cfg, struct('prescale', 255/maxval));
         [n_rows, n_cols, ~] = size(img_lms);
 
         for k = 1:nsmp

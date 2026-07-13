@@ -91,7 +91,7 @@ decision tree grown against near/far error. Precisely:
    at the **cumulative-probability midpoint of that bin** — i.e. the prior-median *within* the bin.
 3. **Score it by the task.** `proximity_error` computes, for that single feature under the candidate
    bins, the multinomial-LLR response for every near pair and every far pair (from
-   `patch_pairs_<ecc>.mat`, Stage 3), then calls `classify_normals` (IntClassNorm) to get the optimal
+   `patch_pairs_ecc<ecc>.mat`, Stage 3), then calls `classify_normals` (IntClassNorm) to get the optimal
    near-vs-far classification error `samp_opt_err`.
 4. **Keep or freeze.** If the split reduces error by more than a fixed fraction
    (`err_crit = 0.002`, i.e. 0.2 %), accept it; otherwise **freeze** that bin (never split again).
@@ -225,7 +225,7 @@ bin sets diverge.
 
 ## 7. How to test all of this
 
-Everything below reuses artifacts that already exist (`priors_*_otf.mat`, `patch_pairs_<ecc>.mat`,
+Everything below reuses artifacts that already exist (`priors_*_otf.mat`, `patch_pairs_ecc<ecc>.mat`,
 `AHEO_bins.mat`) and the existing DV functions. Only one small helper is needed: a variant of
 `multinomial_llr` that returns the per-bin terms as well as the sum.
 
@@ -254,7 +254,7 @@ different" into a number per feature.
 1. Choose a **fine, uniform-in-quantile** reference binning from 0.1 % to 99.9 % of the prior (e.g. 256
    or 1024 bins) via `make_bins`. (Uniform in *quantile* keeps per-bin counts balanced; using 0.1–99.9 %
    trims unstable tails, exactly as you suggested.)
-2. For every near pair and every far pair in `patch_pairs_<ecc>.mat`, compute the per-pair per-bin terms
+2. For every near pair and every far pair in `patch_pairs_ecc<ecc>.mat`, compute the per-pair per-bin terms
    `t_i` with `multinomial_llr_terms` (drive it through `dv_spot_hist`/`dv_edge_hist` so the feature
    extraction is identical to production).
 3. Accumulate per bin: `E_near[t_i]`, `E_far[t_i]`, their variances, `Δ_i`, and `d'_i`.

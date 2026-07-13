@@ -38,11 +38,7 @@ function coeff = s1_learn_color_transform(cfg)
     for f = 1:numel(files)
         [~, fname, fext] = fileparts(files{f});
         fprintf('sampling %s\n', [fname, fext]);
-        img = double(imread(files{f})) * 255 / maxval;      % scale 14-bit -> 0..255
-        if cfg.optics.apply
-            img = vislab.lib.otf_filter(img, cfg.optics.ppd_natural, cfg.optics.pupil_diameter, cfg.optics.wavelength);
-        end
-        img_lms = vislab.lib.rgb2lms(img);            % shared lab RGB->LMS calibration
+        img_lms = vislab.nat_stat_bayes.source_to_lms(files{f}, cfg, struct('prescale', 255/maxval));
         [n_rows, n_cols, ~] = size(img_lms);
         for s = 1:nsmp
             x = randi(n_rows - psz);
