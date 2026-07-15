@@ -61,18 +61,22 @@ layers = [
     reluLayer
     maxPooling2dLayer(2,Stride=2) % 5x5
     convolution2dLayer(2,32,WeightsInitializer="narrow-normal",BiasInitializer="narrow-normal") % 4x4 x32
-    reluLayer]; % subnet outputs a 4x4x32 map; poolStats reduces it to a
-                % 64-vector (32 channel means + 32 channel stds) per patch
+    reluLayer]; % subnet outputs a 4x4x32 map; poolStats reduces it to per-channel
+                % mean, std, and channel-correlation stats per patch (see compareTwin)
 
 net = dlnetwork(layers);
 
-% merge with fully connected layer (architecture C: 64-d pooled embedding)
-fcWeights = dlarray(0.01*single(randn(1,64))); % 64 = 32 channel means + 32 channel stds from poolStats
+% merge with fully connected layer. compareTwin comparison vector = per-channel
+% d' (mean diff / pooled sd) + std diff (2*C) plus the strict upper triangle of
+% the channel correlation difference (C(C-1)/2); with C = 32 that is 64 + 496 = 560.
+nChan = 32;                      % channels out of the last conv layer
+nEmb  = 2*nChan + nChan*(nChan-1)/2;   % comparison length (d' + std diff + corr diff)
+fcWeights = dlarray(0.01*single(randn(1,nEmb)));
 fcBias = dlarray(0.01*single(randn(1,1)));
 fcParams = struct("FcWeights",fcWeights,"FcBias",fcBias);
 
 %% train network
-numIterations = 1.5e4;
+numIterations = 1e4;
 miniBatchSize = 13000;
 learningRate = 1e-2;
 gradDecay = 0.9;
@@ -82,9 +86,11 @@ trailingAvgSubnet = [];
 trailingAvgSqSubnet = [];
 trailingAvgParams = [];
 trailingAvgSqParams = [];
-% Create a standard figure with animated lines for precise color control
+% Monitor figure: accuracy curves on top, a montage of the first conv layer's
+% learned kernels underneath (both refreshed together at each test iteration).
 monitor_fig = figure('Name', 'Training Progress');
-ax = axes(monitor_fig);
+monitor_tl = tiledlayout(monitor_fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+ax = nexttile(monitor_tl);
 grid(ax, 'on');
 xlabel(ax, 'Iteration');
 ylabel(ax, 'Accuracy');
@@ -96,6 +102,12 @@ lineNatVal = animatedline(ax, 'DisplayName', 'test (nat)', 'Color', [0 0.4470 0.
 lineTexVal = animatedline(ax, 'DisplayName', 'test (all textures)', 'Color', [1 0.6 0.6], 'LineWidth', 1.5);
 lineBrodVal = animatedline(ax, 'DisplayName', 'test (Brodatz)', 'Color', [0.8 0.1 0.1], 'LineWidth', 1.5);
 legend(ax, 'show', 'Location', 'southeast');
+
+% Second tile: first-layer kernel montage (drawn in the monitor block below).
+axKernels = nexttile(monitor_tl);
+title(axKernels, 'conv1 filters');
+axis(axKernels, 'image', 'off');
+colormap(axKernels, gray);
 
 % OPTIMIZATION: Pre-load fixed texture validation batches to the GPU (all textures +
 % Brodatz-only), each reused every check.
@@ -181,6 +193,29 @@ while iteration < numIterations && isvalid(monitor_fig)
         YValNat = round(extractdata(YValNat));
         nat_val_acc = gather(sum(YValNat == valLabelsNat)/miniBatchSize);
         addpoints(lineNatVal, iteration, nat_val_acc);
+
+        % Refresh the first-layer kernel montage. conv1 = 8 kernels of 5x5x1; each is
+        % normalized to [0,1] on its own (so faint filters still show structure) and
+        % laid out in a padded grid. net.Learnables holds only the subnet conv weights,
+        % so the first "Weights" row is conv1.
+        lrn = net.Learnables;
+        w1 = gather(extractdata(lrn.Value{find(lrn.Parameter == "Weights", 1)})); % [kh kw 1 nk]
+        w1 = squeeze(w1(:,:,1,:));                        % [kh kw nk]
+        [kh, kw, nk] = size(w1);
+        nCols = ceil(sqrt(2*nk)); nRows = ceil(nk/nCols); % wide-ish grid
+        pad = 1;
+        mosaic = 0.5 * ones(nRows*(kh+pad)-pad, nCols*(kw+pad)-pad); % mid-grey borders
+        for kk = 1:nk
+            r = floor((kk-1)/nCols); c = mod(kk-1, nCols);
+            k = w1(:,:,kk);
+            k = (k - min(k(:))) / (max(k(:)) - min(k(:)) + eps); % per-kernel [0,1]
+            mosaic(r*(kh+pad)+(1:kh), c*(kw+pad)+(1:kw)) = k;
+        end
+        imagesc(axKernels, mosaic, [0 1]);
+        colormap(axKernels, gray);
+        axis(axKernels, 'image', 'off');
+        title(axKernels, sprintf('conv1 filters (%d\\times %d\\times%d)', nk, kh, kw));
+
         drawnow;
     else
         drawnow limitrate;
