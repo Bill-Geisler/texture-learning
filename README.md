@@ -34,13 +34,7 @@ for the HBO model this builds on.
 
 ## Installation and Setup
 
-First, download or clone this repository to your local machine:
-```bash
-git clone https://github.com/abhranildas/texture-learning.git
-cd texture-learning
-```
-
-Then, from within MATLAB, run:
+Download or clone this repository to your local machine. Then within MATLAB, navigate to the repo folder and run:
 ```matlab
 setup            % adds this repo + vislab to the path; checks the toolboxes
 cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab-common/data isn't a sibling
