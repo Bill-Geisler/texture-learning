@@ -4,12 +4,12 @@ function Y = predictTwin(net,fcParams,X1,X2)
 % dissimilar (closer to 0). Use predictTwin during prediction.
 
 % Pass each image through the twin subnetwork, then pool its feature map to
-% raw per-patch texture statistics (mean/std/correlation) via poolStats.
-S1 = poolStats(predict(net,X1));
-S2 = poolStats(predict(net,X2));
+% mean+std texture statistics (L2-normalized) via poolStats.
+Y1 = poolStats(predict(net,X1));
+Y2 = poolStats(predict(net,X2));
 
-% Build the two-patch comparison (d', std difference, correlation difference).
-Y = compareTwin(S1,S2);
+% Subtract the feature vectors.
+Y = abs(Y1 - Y2);
 
 % Pass result through a fullyconnect operation.
 Y = fullyconnect(Y,fcParams.FcWeights,fcParams.FcBias);

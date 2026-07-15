@@ -61,17 +61,13 @@ layers = [
     reluLayer
     maxPooling2dLayer(2,Stride=2) % 5x5
     convolution2dLayer(2,32,WeightsInitializer="narrow-normal",BiasInitializer="narrow-normal") % 4x4 x32
-    reluLayer]; % subnet outputs a 4x4x32 map; poolStats reduces it to per-channel
-                % mean, std, and channel-correlation stats per patch (see compareTwin)
+    reluLayer]; % subnet outputs a 4x4x32 map; poolStats reduces it to a
+                % 64-vector (32 channel means + 32 channel stds) per patch
 
 net = dlnetwork(layers);
 
-% merge with fully connected layer. compareTwin comparison vector = per-channel
-% d' (mean diff / pooled sd) + std diff (2*C) plus the strict upper triangle of
-% the channel correlation difference (C(C-1)/2); with C = 32 that is 64 + 496 = 560.
-nChan = 32;                      % channels out of the last conv layer
-nEmb  = 2*nChan + nChan*(nChan-1)/2;   % comparison length (d' + std diff + corr diff)
-fcWeights = dlarray(0.01*single(randn(1,nEmb)));
+% merge with fully connected layer (architecture C: 64-d pooled embedding)
+fcWeights = dlarray(0.01*single(randn(1,64))); % 64 = 32 channel means + 32 channel stds from poolStats
 fcBias = dlarray(0.01*single(randn(1,1)));
 fcParams = struct("FcWeights",fcWeights,"FcBias",fcBias);
 

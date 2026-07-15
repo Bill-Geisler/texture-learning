@@ -24,24 +24,6 @@ Ordered roughly by expected impact on the Brodatz transfer gap.
 - **ecc > 1 patch size** — the Bayesian cuts `64/ecc` patches while the CNN input is fixed at 64 px;
   reconcile before comparing peripherally. Also needs same-ecc bins (s4/s5 default `eccb = 1`).
 
-### 2. Second-order embedding — channel correlation + d′ comparison (done)
-
-`poolStats` now returns raw per-patch stats (mean, std, and the strict upper triangle of the channel
-*correlation* matrix — the Gram/co-occurrence texture statistic, dimensionless so it is comparable
-across patches). `compareTwin` turns the two patches' stats into a dimensionless comparison vector:
-per-channel d′ (`|Δmean|/pooled_sd`), std difference (`|Δstd|/pooled_sd`), and correlation difference
-(`|Δcorr|`) → D = 2C + C(C-1)/2 = 560 for C = 32. Rationale for the scaling: a *constant* per-feature
-scale is absorbed by the learned fc weights (and cushioned by Adam), so it need not be normalized;
-what the weights *cannot* undo is a per-sample, data-dependent scale (raw covariance grows as
-activation², the d′ denominator varies per patch), so d′ and correlation are used to make those
-features per-sample stable by construction. Notes:
-- Changes the architecture, so the net trains from scratch (old `net_on_nat.mat` won't load), and the
-  merge weight in `train_cnn.m` is 1×560 (`nEmb = 2*nChan + nChan*(nChan-1)/2`).
-- Correlation diagonal is identically 1 (would duplicate std), so only the strict upper triangle is kept.
-- With a 4×4 = 16-position map the correlation is estimated from only 16 samples — a noisy per-patch
-  estimate; the correlation block is the least reliable part and worth testing on its own.
-- Expected effect is modest and likely within run-to-run noise until a fixed rng seed is added.
-
 ### 3. Feature visualization during training
 
 Refresh on the existing every-50-iterations schedule.
@@ -62,6 +44,42 @@ Refresh on the existing every-50-iterations schedule.
 Not expected to be the shipped fix — the Bayesian achromatic histogram is *not*
 contrast-normalized, and the CNN's `img/mean(img(:))` input already matches that.
 
+### 6. Architecture variants — pooling & loss (to consider)
+
+Judged against the network's goals: transfer to texture same/different, stay **lean** (avoid overfitting
+natural images), and keep an **interpretable, statistics-based** embedding comparable to the Bayesian model.
+
+| Idea | What changes | May benefit the goals | May not / cost | Verdict |
+|---|---|---|---|---|
+| **Average pooling** | mean instead of max in the intermediate pools | Matches `poolStats`' mean/std philosophy — "pool statistics" end to end; **adds no parameters** (stays lean) | Can wash out sparse-but-strong features that max's "present-anywhere" behavior keeps; task-dependent | Cheap and on-theme — try first; but a small change, so the effect may sit within run-to-run noise |
+| **Strided convolution** | conv steps by 2 and does the downsampling (learned) instead of a max-pool | Learnable downsampling can preserve more texture structure than a fixed max | **Adds parameters** → pushes back toward overfitting natural images (the original problem) | Small likely gain, wrong direction on capacity — deprioritize |
+| **Metric-learning loss** (contrastive / triplet) | shape the embedding space directly (same → close, different → far) instead of `abs`-diff → fc → cross-entropy | Makes the **embedding the object of study** — a distance space to visualize and compare geometrically to the Bayesian features; drops the somewhat arbitrary fc comparison head | Near/far is a noisy *proxy* for same/different, so margin losses are finicky; reintroduces margin + decision-threshold knobs; not guaranteed to transfer better | Biggest lever — most likely to *clearly* exceed noise (in either direction); the real experiment |
+
+**Sequencing for a clearly-visible, seed-independent effect:** the pooling tweaks are small enough that
+run-to-run variation may swamp them; the loss change is the one big enough to move the needle
+unambiguously. Try average pooling first (free, on-theme), then metric learning as the main experiment.
+
+### 7. Features across scales — V1-like multi-scale front end (to consider)
+
+Currently the net is single-scale per layer (conv1 = one 5×5 filter); larger scales appear only
+*sequentially* as depth + pooling grow the receptive field (~5 px → ~40 px). V1 instead has **parallel**
+spatial-frequency channels at one stage. Options to add that, cheapest → most principled:
+
+| Idea | What changes | May benefit the goals | May not / cost | Verdict |
+|---|---|---|---|---|
+| **Dilated (atrous) convolution** | same small kernel spaced out to cover a larger extent; several dilations in parallel | Parallel SF channels with **few/no extra parameters** (stays lean) | One kernel *shape*; wide dilations can skip detail between sampled points ("gridding") | Cheapest way to add scales, respects the lean goal — good first experiment |
+| **Multi-size filter bank at layer 1** (Inception-style) | several conv layers of different kernel sizes (e.g. 3×3, 7×7, 15×15) on the input, channels concatenated | Directly mimics V1's multiple SF channels; fully learnable | **Adds parameters** → pushes back toward overfitting | Faithful and flexible, but heavier on capacity |
+| **Gaussian/Laplacian pyramid front end** | downsample the patch into a few resolutions, convolve each, then `poolStats` per scale | Closest to the steerable-pyramid / Portilla–Simoncelli texture model and the Bayesian power-spectrum-across-scales features; most interpretable and on-theme | More plumbing; separate convs per level add parameters | Most principled — best V1- and Bayesian-alignment |
+
+Notes:
+- **`poolStats` extends naturally:** pool mean/std within each (scale, orientation) channel → per-scale
+  statistics, i.e. essentially the steerable-pyramid texture descriptor.
+- **The OTF sets the fine-scale limit** ([config.m](../config.m) optics): the eye's optics already remove
+  spatial frequencies above the optical cutoff, so there is no point adding filters finer than the OTF passes.
+- **Fixed vs learned:** a fixed Gabor/steerable bank is maximally V1-faithful and interpretable but risks the
+  same objection as the ruled-out fixed Bayesian front end ("CNN would learn nothing new"); a *learnable*
+  multi-scale first layer (dilated or multi-size) keeps the network learning while adding scale diversity.
+
 ## Lessons learned
 
 - **Order-invariant pooling is necessary but not sufficient** — it removes spatial-layout
@@ -73,10 +91,8 @@ contrast-normalized, and the CNN's `img/mean(img(:))` input already matches that
 ## Architecture reference
 
 Conv stack `conv → relu → pool` ×4, channels **8‑16‑16‑32** (conv1 = 8 kernels of 5×5).
-Embedding: `poolStats` spatially pools the final map to per-channel mean, std, and the strict upper
-triangle of the channel *correlation*. `compareTwin` then turns the two patches' stats into a
-dimensionless comparison — per-channel d′ (`|Δmean|/pooled_sd`), std difference (`|Δstd|/pooled_sd`),
-and correlation difference (`|Δcorr|`) → **560-d**, merged by a 1×560 weight. ~9,600 conv params.
+Embedding: mean+std pooling of the final map → **64-d, L2-normalized** (`poolStats`), merged by a
+1×64 weight. ~9,600 conv params.
 
 ## Ruled out
 
