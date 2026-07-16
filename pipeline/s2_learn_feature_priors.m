@@ -1,5 +1,5 @@
 function s2_learn_feature_priors(cfg)
-% S2_LEARN_FEATURE_PRIORS  Measure prior CDFs of task-independent features from natural images.
+% S2_LEARN_FEATURE_PRIORS  Measure the natural priors (prior CDFs of low-level features) from natural images.
 %   s2_learn_feature_priors(cfg)
 %
 %   Pipeline stage 2 (was cdfs_of_features.m). Using the LMS->ABR rotation from
@@ -10,7 +10,7 @@ function s2_learn_feature_priors(cfg)
 %     * 2nd-derivative steerable responses (magnitude, orientation, mag x ori)
 %     * center-surround responses (ratio, small linear, large linear)
 %   then computes the marginal cumulative distribution functions (the paper's
-%   task-independent priors, Fig. 5). These 1D CDFs are the task-independent "feature priors". Saves the result
+%   natural priors, Fig. 5). These 1D CDFs are the "natural priors" over features. Saves the result
 %   to data/models/priors_abr_mo13_mo23_cs33[_otf].mat.
 %
 %   Run `setup` first; run stage 1 first (or ensure vislab-common/data/cps_lms2abr_otf.mat exists).

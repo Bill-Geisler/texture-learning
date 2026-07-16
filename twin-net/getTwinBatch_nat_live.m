@@ -13,7 +13,7 @@ function [X1,X2,pairLabels] = getTwinBatch_nat_live(A_pool,miniBatchSize,psz,sam
 %
 % Returns X1,X2 as [psz psz 1 miniBatchSize] uint8 (patch 1 and patch 2 of each
 % pair) and pairLabels as a 1 x miniBatchSize row vector (1 = near/positive,
-% 0 = far/negative). Patches are cut on the CPU; train_cnn moves the finished
+% 0 = far/negative). Patches are cut on the CPU; train_net moves the finished
 % batch to the GPU.
 %
 % Note: this must NOT reseed the RNG. The offline generator reseeds per image with

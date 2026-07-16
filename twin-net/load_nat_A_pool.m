@@ -7,7 +7,7 @@ function A_pool = load_nat_A_pool(cfg, down_level)
 %   them as a cell array of uint8 images, one per source image.
 %
 %   Ingestion goes through the shared vislab.nat_stat_bayes.source_to_lms, so the
-%   CNN's natural-image processing (optics ppd/pupil/wavelength, RGB->LMS->A) uses
+%   twin network's natural-image processing (optics ppd/pupil/wavelength, RGB->LMS->A) uses
 %   the SAME function and the SAME parameters (from cfg / config.m) as the Bayesian
 %   pipeline -- they cannot drift apart. The per-image scaling (255/max_val) matches
 %   the Bayesian natural stages; any per-patch scale is removed later by the network

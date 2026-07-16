@@ -31,7 +31,7 @@ function s3_make_nearfar_pairs(cfg, ecc)
     % Patches are stored as the ACHROMATIC (A) channel only (1-channel). Each half is
     % normalized (ptch_norm type 3) then rotated LMS->ABR and A is kept, via the shared
     % vislab.nat_stat_bayes.patch_to_a -- the same order the downstream DV code used, so
-    % results are unchanged; downstream just reads A directly. See cnn/cnn_plan.md.
+    % results are unchanged; downstream just reads A directly. See twin-net/net_plan.md.
     ptchn = zeros(psz, psz2, 1, max_pairs);
     ptchf = zeros(psz, psz2, 1, max_pairs);
     pcnt = 0;

@@ -1,8 +1,8 @@
-% nat_near_far_patches_cnn.m
+% nat_near_far_patches_net.m
 % sample texture image patch pairs from 16-bit linear rgb natural images and save
 % near/far A-channel (achromatic) pairs to a single .mat file (loaded whole at train time)
 %
-% NOT used by cnn/train_cnn.m, which now samples near/far pairs on the fly (see
+% NOT used by twin-net/train_net.m, which now samples near/far pairs on the fly (see
 % getTwinBatch_nat_live.m + load_nat_A_pool.m) so pairs never repeat. This script is
 % kept as a standalone tool for offline inspection/regeneration of a fixed pair set.
 %
@@ -33,7 +33,7 @@ parfor k = 1:n_img
 
     % process this image into its achromatic (A) channel (uint8, 0-255) via the
     % shared helper -- the same routine the on-the-fly training sampler uses, so
-    % the two paths stay identical (see cnn_plan.md)
+    % the two paths stay identical (see net_plan.md)
     [~, A] = vislab.nat_stat_bayes.source_to_lms(files{k}, cfg, struct('prescale', prescale, 'ecc', down_level));
     A = uint8(A * 255 / max(A(:)));
 

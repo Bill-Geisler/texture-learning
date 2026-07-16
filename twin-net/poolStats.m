@@ -1,5 +1,5 @@
 function emb = poolStats(F)
-% poolStats  Order-invariant texture statistics of a CNN feature map.
+% poolStats  Order-invariant texture statistics of a network feature map.
 %   emb = poolStats(F) takes a feature map F in "SSCB" format ([H W C B]) and
 %   returns a per-patch embedding that pools over the spatial positions, so
 %   feature *position* is discarded and only feature *statistics* are kept

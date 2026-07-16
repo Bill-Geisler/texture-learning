@@ -23,7 +23,7 @@ function [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc)
     tex = cfg.paths.textures;
 
     % Build the file list and the per-image database name; the ingestion flags
-    % (gray/gamma/resize) come from cfg.textures so they can't diverge from the CNN.
+    % (gray/gamma/resize) come from cfg.textures so they can't diverge from the twin network.
     switch itype
         case 2                                   % Fabric
             nimg = 60;

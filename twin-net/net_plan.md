@@ -1,8 +1,8 @@
-# Twin CNN — plan and to-do
+# Twin network — plan and to-do
 
 ## Goal
 
-Train the twin CNN to learn **texture statistics** from near/far natural-image labels,
+Train the twin network to learn **texture statistics** from near/far natural-image labels,
 so the rule transfers to Brodatz same/different discrimination. Target: mid-80s–90s.
 This is the learned counterpart to the Bayesian model in this repo's `pipeline/`.
 
@@ -21,7 +21,7 @@ Ordered roughly by expected impact on the Brodatz transfer gap.
 **Still to do:**
 
 - **Dead B/R code** — s2 builds unused dim-2/3 color priors; s4 maps dims 2/3. Harmless; prune when convenient.
-- **ecc > 1 patch size** — the Bayesian cuts `64/ecc` patches while the CNN input is fixed at 64 px;
+- **ecc > 1 patch size** — the Bayesian cuts `64/ecc` patches while the network input is fixed at 64 px;
   reconcile before comparing peripherally. Also needs same-ecc bins (s4/s5 default `eccb = 1`).
 
 ### 3. Feature visualization during training
@@ -37,12 +37,12 @@ Refresh on the existing every-50-iterations schedule.
 ### 4. Regularization / augmentation (tidy the curve, unlikely to close the gap alone)
 
 - Data augmentation (flips/rotations) in `getTwinBatch_nat_live`.
-- Weight decay on both `adamupdate` calls in `train_cnn.m`.
+- Weight decay on both `adamupdate` calls in `train_net.m`.
 
 ### 5. Contrast-normalization ablation (empirical only)
 
 Not expected to be the shipped fix — the Bayesian achromatic histogram is *not*
-contrast-normalized, and the CNN's `img/mean(img(:))` input already matches that.
+contrast-normalized, and the network's `img/mean(img(:))` input already matches that.
 
 ### 6. Architecture variants — pooling & loss (to consider)
 
@@ -65,19 +65,29 @@ Currently the net is single-scale per layer (conv1 = one 5×5 filter); larger sc
 *sequentially* as depth + pooling grow the receptive field (~5 px → ~40 px). V1 instead has **parallel**
 spatial-frequency channels at one stage. Options to add that, cheapest → most principled:
 
-| Idea | What changes | May benefit the goals | May not / cost | Verdict |
-|---|---|---|---|---|
-| **Dilated (atrous) convolution** | same small kernel spaced out to cover a larger extent; several dilations in parallel | Parallel SF channels with **few/no extra parameters** (stays lean) | One kernel *shape*; wide dilations can skip detail between sampled points ("gridding") | Cheapest way to add scales, respects the lean goal — good first experiment |
-| **Multi-size filter bank at layer 1** (Inception-style) | several conv layers of different kernel sizes (e.g. 3×3, 7×7, 15×15) on the input, channels concatenated | Directly mimics V1's multiple SF channels; fully learnable | **Adds parameters** → pushes back toward overfitting | Faithful and flexible, but heavier on capacity |
-| **Gaussian/Laplacian pyramid front end** | downsample the patch into a few resolutions, convolve each, then `poolStats` per scale | Closest to the steerable-pyramid / Portilla–Simoncelli texture model and the Bayesian power-spectrum-across-scales features; most interpretable and on-theme | More plumbing; separate convs per level add parameters | Most principled — best V1- and Bayesian-alignment |
+| Idea | Switch (`arch`) | Learned params | What changes | May benefit the goals | May not / cost | Verdict |
+|---|---|---|---|---|---|---|
+| **Dilated (atrous) convolution** | `dilated` | **9,681** (= baseline; dilation is parameter-free) | same small kernel spaced out to cover a larger extent; several dilations in parallel | Parallel SF channels with **few/no extra parameters** (stays lean) | One kernel *shape*; wide dilations can skip detail between sampled points ("gridding") | Cheapest way to add scales, respects the lean goal — good first experiment |
+| **Multi-size filter bank at layer 1** (Inception-style) | `multiscale` | **14,561** (3×3 bank ×3 + tail) | several conv layers of different kernel sizes (e.g. 3×3, 7×7, 15×15) on the input, channels concatenated | Directly mimics V1's multiple SF channels; fully learnable | **Adds parameters** → pushes back toward overfitting | Faithful and flexible, but heavier on capacity |
+| **Gaussian/Laplacian pyramid front end** | `pyramid` | **7,633** (lean config; *below* baseline) | downsample the patch into a few resolutions, convolve each, then combine and pool | Closest to the steerable-pyramid / Portilla–Simoncelli texture model and the Bayesian power-spectrum-across-scales features; most interpretable and on-theme | More plumbing; averaging levels to a common size discards some fine detail | Most principled — best V1- and Bayesian-alignment, and can be the leanest |
+| **Pyramid, widened** | `pyramid_wide` | **11,137** (~1.15× baseline) | same 3-scale pyramid as `pyramid` (bc=8), tail widened to `nChan=48` (embedding 96) | Small capacity bump to lift accuracy while keeping the pyramid's texture edge | ~1.15× params; still risks locking onto natural-specific structure (on-the-fly sampling blocks *memorization*, not this) | Gentle probe — a 29k version (bc=16, nChan=64) erased the Brodatz-over-nat edge, so kept small |
 
 Notes:
+- **Parameter counts** are total learned weights + biases (conv stack + the fc head, `2C+1`: e.g. 65 for
+  `C = 32`, 97 for `C = 48`). **Baseline = 9,681** for reference. Dilation is parameter-free
+  (`dilated` = baseline); the bank is ~50% more; the lean `pyramid` is *below* baseline at 7,633;
+  `pyramid_wide` is a small step up at 11,137 (~1.15× baseline).
+- **Lean pyramid config** (the `pyramid` switch, 7,633 params): 3 scales via average-pooling (1 / 2 / 4),
+  a per-scale 5×5×8 conv, each resized to a common 12×12 and depth-concatenated (24 channels), then a
+  single 3×3×32 tail conv → 10×10×32. `pyramid_wide` is the same graph with the same 8 ch/scale and a
+  48-channel tail (`nChan=48`). Average-pool is a box approximation to a Gaussian pyramid; a Laplacian
+  variant would use scale differences.
 - **`poolStats` extends naturally:** pool mean/std within each (scale, orientation) channel → per-scale
   statistics, i.e. essentially the steerable-pyramid texture descriptor.
 - **The OTF sets the fine-scale limit** ([config.m](../config.m) optics): the eye's optics already remove
   spatial frequencies above the optical cutoff, so there is no point adding filters finer than the OTF passes.
 - **Fixed vs learned:** a fixed Gabor/steerable bank is maximally V1-faithful and interpretable but risks the
-  same objection as the ruled-out fixed Bayesian front end ("CNN would learn nothing new"); a *learnable*
+  same objection as the ruled-out fixed Bayesian front end ("the network would learn nothing new"); a *learnable*
   multi-scale first layer (dilated or multi-size) keeps the network learning while adding scale diversity.
 
 ## Lessons learned
@@ -96,8 +106,7 @@ Embedding: mean+std pooling of the final map → **64-d, L2-normalized** (`poolS
 
 ## Ruled out
 
-- Fixed Bayesian front-end as feature source — CNN would learn nothing new.
+- Fixed Bayesian front-end as feature source — the network would learn nothing new.
 - Shrinking receptive fields below patch size — already local enough.
 - Early stopping on the Brodatz peak — hides the shortcut. (Still keep a Brodatz test split
   untouched by any decision, for the final number.)
-- Trimming capacity to prevent memorization — moot; on-the-fly data already prevents it.

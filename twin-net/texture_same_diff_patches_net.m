@@ -1,5 +1,5 @@
-% texture_same_diff_patches_cnn.m
-% Build same/different texture patch-pair TEST sets for the twin CNN, from several
+% texture_same_diff_patches_net.m
+% Build same/different texture patch-pair TEST sets for the twin network, from several
 % texture databases in vislab-common/data/textures. Produces TWO sets:
 %
 %   same,      diff       -- ALL databases combined (balanced), "different" pairs may

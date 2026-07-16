@@ -4,7 +4,7 @@ function setup()
 %       >> setup
 %
 %   Adds to the path:
-%     * this repo (its +segmentation and +gtr packages, pipeline/, and cnn/ --
+%     * this repo (its +segmentation and +gtr packages, pipeline/, and twin-net/ --
 %       the latter needs the Deep Learning Toolbox)
 %     * data/models  (shipped trained artifacts: PCA/CDF/bin/DV .mat files)
 %     * vislab (the shared code library) -- the +vislab package inside the
@@ -21,7 +21,8 @@ function setup()
     repo_root = fileparts(mfilename('fullpath'));
     addpath(repo_root);                                        % local +segmentation, +gtr
     addpath(fullfile(repo_root, 'pipeline'));                  % s1..s7 pipeline stages
-    addpath(fullfile(repo_root, 'cnn'));                       % twin-CNN code (needs Deep Learning Toolbox)
+    addpath(fullfile(repo_root, 'demo'));                      % run_demo plotting/helper functions
+    addpath(fullfile(repo_root, 'twin-net'));                  % twin-network code (needs Deep Learning Toolbox)
     addpath(genpath(fullfile(repo_root, 'data', 'models')));   % shipped .mat artifacts
 
     % --- shared lab library (vislab): a sibling folder next to this repo.

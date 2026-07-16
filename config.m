@@ -22,7 +22,7 @@ function cfg = config()
     cfg.optics.ppd            = 60;      % pixels/deg for ALL images (natural, textures, GTR/display):
                                          % the human psychophysics display resolution. (Was 64 for the
                                          % calibrated natural images; unified to 60 -- requires
-                                         % regenerating s1-s5 artifacts. See cnn/cnn_plan.md.)
+                                         % regenerating s1-s5 artifacts. See twin-net/net_plan.md.)
     cfg.optics.pupil_diameter = 4;       % mm
     cfg.optics.wavelength     = 550;     % nm
     cfg.optics.apply          = true;    % apply optics (the "_otf" / filter == 1 path)
@@ -42,7 +42,7 @@ function cfg = config()
     cfg.patch.size       = 64;    % 1-deg patch size in pixels (eccentricity 1, fovea)
 
     % --- texture-database ingestion flags (single source, used by both the Bayesian
-    %     load_texture_images and the CNN texture test set via source_to_lms):
+    %     load_texture_images and the twin network's texture test set via source_to_lms):
     %       ext    file extension           gray   grayscale sheet -> replicate to 3 channels
     %       gamma  linearize gamma-compressed sheet   resize  1024px pertex sheet -> image_size ---
     cfg.textures.brodatz = struct('ext','gif','gray',true, 'gamma',false,'resize',false);
