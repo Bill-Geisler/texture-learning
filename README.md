@@ -34,7 +34,9 @@ for the HBO model this builds on.
 
 ## Installation and Setup
 
-Download or clone this repository to your local machine. Then within MATLAB, navigate to the repo folder and run:
+- Download or git clone this repository to your local machine.
+- Install git (so that the `setup` script can automatically git clone the `vislab-common` dependency)
+- Within MATLAB, navigate to the repo folder and run:
 ```matlab
 setup            % adds this repo + vislab to the path; checks the toolboxes
 cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab-common/data isn't a sibling
