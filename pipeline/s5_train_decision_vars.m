@@ -1,14 +1,23 @@
-function s5_train_decision_vars(cfg, ecc, eccb)
+function [near, far] = s5_train_decision_vars(cfg, ecc, eccb, autosave)
 % S5_TRAIN_DECISION_VARS  Train the near/far decision-variable bounds from patch pairs.
 %   s5_train_decision_vars(cfg, ecc)
 %   s5_train_decision_vars(cfg, ecc, eccb)
+%   s5_train_decision_vars(cfg, ecc, eccb, autosave)
+%   [near, far] = s5_train_decision_vars(...)
+%
+%   autosave (optional) - true/false to save/skip without asking (used by
+%   run_demo, which confirms once up front); omit to be asked interactively.
+%
+%   Optional outputs near, far are the full per-pair response matrices the bounds
+%   were trained on (columns [rh1 rh2 rh3 re1 re3 re4 rp rb1 rb2]); run_demo reuses
+%   them so the Stage 5 plots show exactly the points training used.
 %
 %   Pipeline stage 5 (was nat_near_far_dv_2.m). Using the proximity proxy
 %   (near = "same", far = "different"), computes the power, spot, edge and border
 %   feature responses for all patch pairs, then trains quadratic decision bounds
 %   (via classify_normals) for, in order: spot (h), edge (e), content (c =
 %   power+spot+edge), border (b), and content). Saves the struct of all bounds to
-%   data/models/decision_bounds_ecc<ecc>.mat.
+%   data/models/decision_bounds_ecc_<ecc>.mat.
 %
 %   Run `setup` first; run stages 2-4 before. Requires IntClassNorm
 %   (classify_normals, quad2fun).
@@ -31,8 +40,8 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     nh     = cfg.features.spot_dims;       % [1 13 14]
     ne     = cfg.features.edge_dv_dims;    % [5 9 10]
 
-    feature_list = zeros(1, 20);  feature_list([1 5 6 7 9 10 11 13 14]) = 1;
-    cstat        = zeros(1, 20);  cstat([1 5 6 7 9 10 11 13 14]) = btype;
+    feature_list = zeros(1, 20);  feature_list([1 5 9 10 13 14]) = 1;   % spot [1 13 14] + edge DV [5 9 10]; 6/7/11 unused
+    cstat        = zeros(1, 20);  cstat([1 5 9 10 13 14]) = btype;
 
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
     % (LMS->ABR rotation is auto-loaded by apply_color_rotation from the shared store)
@@ -74,10 +83,15 @@ function s5_train_decision_vars(cfg, ecc, eccb)
     dbnd.bc = dbndbc;
     
     tag = num2str(ecc);
-    reply = input(sprintf('s5: Save decision variables to disk and overwrite decision_bounds_ecc%s.mat? (y/n): ', tag), 's');
-    if strcmpi(reply, 'y')
-        save(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
-        fprintf('s5: trained + saved decision_bounds_ecc%s (%d near, %d far pairs)\n', tag, size(near,1), size(far,1));
+    if nargin < 4 || isempty(autosave)
+        reply = input(sprintf('s5: Save decision variables to disk and overwrite decision_bounds_ecc_%s.mat? (y/n): ', tag), 's');
+        do_save = strcmpi(reply, 'y');
+    else
+        do_save = autosave;
+    end
+    if do_save
+        save(fullfile(cfg.paths.models, ['decision_bounds_ecc_' tag '.mat']), 'dbnd');
+        fprintf('s5: trained + saved decision_bounds_ecc_%s (%d near, %d far pairs)\n', tag, size(near,1), size(far,1));
     else
         fprintf('s5: skipped saving decision variables.\n');
     end
@@ -121,8 +135,11 @@ end
 
 % ------------------------------------------------------------------------------
 function bd = train_bound(same, different)
-% Sample-optimized quadratic bound between two response clouds.
-    result = classify_normals(same, different, 'input_type', 'samp', 'plotmode', 0);
+% Sample-optimized quadratic bound between two response clouds. samp_balance=true so
+% the SVM weights each class equally: outlier rejection leaves slightly unequal near/
+% far counts, but the proximity proxy is a symmetric same/different task (50/50), so
+% the bound must not tilt with that artifact.
+    result = classify_normals(same, different, 'input_type', 'samp', 'plotmode', 0, 'samp_balance', true);
     bd = result.samp_opt_bd;
 end
 

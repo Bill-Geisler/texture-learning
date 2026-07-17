@@ -73,6 +73,9 @@ function cfg = config()
     % --- reproducibility ---
     cfg.seed = 0;
 
+    % --- demo plots ---
+    cfg.demo.scatter_points = 10000;   % max points drawn in the demo's 3D scatter plots
+
     % --- task-feature definitions (indices used throughout the DV code) ---
     %   1 A pixel (achromatic)     8  bar count
     %   2 B pixel (blue-yellow)    9  bar magnitude

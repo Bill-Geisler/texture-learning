@@ -10,13 +10,14 @@ function setup()
 %     * vislab (the shared code library) -- the +vislab package inside the
 %       sibling vislab-common repo (the lab's local dev layout)
 %
-%   Also VERIFIES the required MATLAB add-on toolboxes are installed. These are
-%   installed through the MATLAB Add-On Explorer / File Exchange -- they are NOT
-%   bundled with this repo and NOT fetched as source:
+%   Also ensures the two required lab add-on toolboxes are available: if either is
+%   missing, setup fetches the .mltbx from its latest GitHub release and installs it
+%   automatically (matlab.addons.install):
 %     * Integrate and Classify Normal Distributions  (classify_normals, quad2fun)
-%         https://github.com/abhranildas/IntClassNorm
+%         https://www.mathworks.com/matlabcentral/fileexchange/84973-integrate-and-classify-normal-distributions
 %     * Generalized chi-square distribution  (gx2*, used by the above)
-%         https://github.com/abhranildas/gx2
+%         https://www.mathworks.com/matlabcentral/fileexchange/85028-generalized-chi-square-distribution
+%   (colorbarpzn, used by a demo plot, now ships inside vislab as vislab.lib.colorbarpzn.)
 
     repo_root = fileparts(mfilename('fullpath'));
     addpath(repo_root);                                        % local +segmentation, +gtr
@@ -40,18 +41,20 @@ function setup()
         addpath(fileparts(commons));                                     % exposes vislab.lib.*, vislab.nat_stat_bayes.*
     end
 
-    % --- installed add-on toolboxes -------------------------------------------
-    % These are installed via the MATLAB Add-On Explorer / File Exchange; we do
-    % NOT bundle or add their source from this repo. Normally MATLAB puts an
-    % installed add-on's folder on the path at startup -- but that does not always
-    % happen in headless (`matlab -batch`) sessions (observed: gx2 gets added,
-    % IntClassNorm does not). So if a probe function is missing, we locate the
-    % *installed* add-on and add it ourselves, then warn only if it is truly
-    % absent. gx2 is handled first because IntClassNorm depends on it.
+    % --- add-on toolboxes -----------------------------------------------------
+    % For each: if its probe function already resolves, do nothing. Else try to add
+    % an already-installed copy to the path (MATLAB does not always do this in
+    % headless `matlab -batch` sessions). Else download the .mltbx from its latest
+    % GitHub release and install it automatically. gx2 is handled first because
+    % IntClassNorm depends on it. (colorbarpzn now lives in vislab, added above.)
     ensure_addon_on_path('gx2cdf', 'Generalized chi-square distribution*', ...
-        'Generalized chi-square distribution (gx2)', 'https://github.com/abhranildas/gx2');
+        'Generalized chi-square distribution (gx2)', ...
+        'https://www.mathworks.com/matlabcentral/fileexchange/85028-generalized-chi-square-distribution', ...
+        'abhranildas/gx2-matlab');
     ensure_addon_on_path('classify_normals', 'Integrate and Classify Normal Distributions*', ...
-        'Integrate and Classify Normal Distributions', 'https://github.com/abhranildas/IntClassNorm');
+        'Integrate and Classify Normal Distributions', ...
+        'https://www.mathworks.com/matlabcentral/fileexchange/84973-integrate-and-classify-normal-distributions', ...
+        'abhranildas/IntClassNorm');
 
     % --- shared data store: vislab-common/data (~23 GB, obtained manually) ---
     if ~isfolder(fullfile(repo_root, '..', 'vislab-common', 'data'))
@@ -95,28 +98,78 @@ function folder = locate_folder(repo_root, name)
     end
 end
 
-function ensure_addon_on_path(probe_function, folder_pattern, toolbox_name, url)
-% Ensure an INSTALLED add-on toolbox's functions are on the path.
-%   If PROBE_FUNCTION already resolves, do nothing. Otherwise find the installed
-%   add-on folder (matching FOLDER_PATTERN under the add-ons install directory)
-%   and add it -- this uses the installed add-on, never any lab-local source.
-%   Warn with install guidance only if it still cannot be found (not installed).
+function ensure_addon_on_path(probe_function, folder_pattern, toolbox_name, url, gh_repo)
+% Ensure an add-on toolbox's functions are available.
+%   1. If PROBE_FUNCTION already resolves, do nothing.
+%   2. Else add an already-installed copy to the path (MATLAB does not always do
+%      this in headless sessions) -- matching FOLDER_PATTERN under the add-ons dir.
+%   3. Else, if GH_REPO ("owner/name") is given, download the .mltbx from that repo's
+%      latest GitHub release and install it (matlab.addons.install), then re-add.
+%   4. Else (still missing): open URL (File Exchange page) in the browser and warn.
     if exist(probe_function, 'file') ~= 0
         return;                               % already on the path -- nothing to do
     end
-    tb_dir = addons_toolboxes_dir();
-    if ~isempty(tb_dir)
-        hits = dir(fullfile(tb_dir, folder_pattern));
-        for i = 1:numel(hits)
-            if hits(i).isdir
-                addpath(genpath(fullfile(tb_dir, hits(i).name)));
-            end
+    add_installed_to_path(folder_pattern);
+    if exist(probe_function, 'file') ~= 0
+        return;
+    end
+    if nargin >= 5 && ~isempty(gh_repo) && install_from_github_release(gh_repo, toolbox_name)
+        add_installed_to_path(folder_pattern);
+        if exist(probe_function, 'file') ~= 0
+            return;
         end
     end
-    if exist(probe_function, 'file') == 0
-        warning('texture_learning:setup:missingToolbox', ...
-            ['Required MATLAB toolbox "%s" not found (cannot find %s). Install it via the ', ...
-             'MATLAB Add-On Explorer / File Exchange: %s'], toolbox_name, probe_function, url);
+    if ~batchStartupOptionUsed                % don't pop a browser in headless (-batch) runs
+        try, web(url, '-browser'); catch, end
+    end
+    warning('texture_learning:setup:missingToolbox', ...
+        ['Required MATLAB toolbox "%s" not found (cannot find %s) and could not be ', ...
+         'auto-installed. Install it (Add-On Explorer / File Exchange), then re-run ', ...
+         'setup: %s'], toolbox_name, probe_function, url);
+end
+
+function add_installed_to_path(folder_pattern)
+% Add an already-installed add-on's folder (matching FOLDER_PATTERN under the
+% add-ons install directory) to the path.
+    tb_dir = addons_toolboxes_dir();
+    if isempty(tb_dir), return; end
+    hits = dir(fullfile(tb_dir, folder_pattern));
+    for i = 1:numel(hits)
+        if hits(i).isdir
+            addpath(genpath(fullfile(tb_dir, hits(i).name)));
+        end
+    end
+end
+
+function ok = install_from_github_release(gh_repo, toolbox_name)
+% Download the .mltbx asset from GH_REPO's latest GitHub release and install it as
+% a MATLAB add-on. Needs network; returns false (and prints why) on any failure.
+    ok = false;
+    try
+        opts = weboptions('UserAgent', 'texture-learning-setup', 'Timeout', 60);
+        rel = webread(sprintf('https://api.github.com/repos/%s/releases/latest', gh_repo), opts);
+        assets = rel.assets;
+        dl_url = '';
+        for i = 1:numel(assets)
+            if iscell(assets), a = assets{i}; else, a = assets(i); end
+            if endsWith(a.name, '.mltbx')
+                dl_url = a.browser_download_url;
+                break;
+            end
+        end
+        if isempty(dl_url)
+            fprintf(2, 'setup: no .mltbx asset in %s''s latest release.\n', gh_repo);
+            return;
+        end
+        fprintf('setup: downloading %s (%s) from GitHub ...\n', toolbox_name, rel.tag_name);
+        tmp = [tempname, '.mltbx'];
+        websave(tmp, dl_url, opts);
+        matlab.addons.install(tmp);
+        delete(tmp);
+        fprintf('setup: installed %s.\n', toolbox_name);
+        ok = true;
+    catch e
+        fprintf(2, 'setup: could not auto-install %s from GitHub (%s).\n', toolbox_name, e.message);
     end
 end
 

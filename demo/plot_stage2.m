@@ -1,8 +1,7 @@
 function plot_stage2(cfg, ecc)
 % PLOT_STAGE2  Show the natural feature priors (PDFs) and the
 %   task-optimized adaptive bins for the spot, edge and bar features.
-    if cfg.optics.apply, out_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, out_file = 'priors_abr_mo13_mo23_cs33.mat'; end
-    out_path = fullfile(cfg.paths.models, out_file);
+    out_path = fullfile(cfg.paths.models, prior_filename(cfg, ecc));
     if ~isfile(out_path), return; end
     priors = load(out_path);
 

@@ -199,5 +199,4 @@ information-equalization (test 4) first; only build the full loop if it beats th
 | Prior-equalizing bins | [`make_bins.m`](../../vislab-common/+vislab/+nat_stat_bayes/make_bins.m) |
 | Candidate split (prior median) | [`find_bin_bound.m`](../../vislab-common/+vislab/+nat_stat_bayes/find_bin_bound.m) |
 | Adaptive bins (Stage 4) | [`s4_optimize_bins.m`](../pipeline/s4_optimize_bins.m) |
-| Feature priors (Stage 2) | [`s2_learn_feature_priors.m`](../pipeline/s2_learn_feature_priors.m) |
-| Near/far pairs (Stage 3) | [`s3_make_nearfar_pairs.m`](../pipeline/s3_make_nearfar_pairs.m) |
+| Feature priors + near/far pairs (Stage 2+3) | [`s23_learn_priors_and_pairs.m`](../pipeline/s23_learn_priors_and_pairs.m) |

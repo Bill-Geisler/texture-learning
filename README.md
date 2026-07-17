@@ -22,9 +22,10 @@ for the HBO model this builds on.
   (the `+vislab` package inside the sibling `vislab-common` folder; `setup.m` clones it automatically if
   it's missing). Provides `vislab.lib.*` (optics, filters, normalization, …) and
   `vislab.nat_stat_bayes.*` (the decision-variable / natural-scene-statistics toolkit).
-- **[IntClassNorm](https://github.com/abhranildas/IntClassNorm)** and
-  **[gx2](https://github.com/abhranildas/gx2)** — installed MATLAB **add-on toolboxes** (Add-On Explorer /
-  File Exchange). `setup.m` verifies they're installed; they are *not* bundled or fetched as source.
+- **[IntClassNorm](https://www.mathworks.com/matlabcentral/fileexchange/84973-integrate-and-classify-normal-distributions)** and
+  **[gx2](https://www.mathworks.com/matlabcentral/fileexchange/85028-generalized-chi-square-distribution)** —
+  MATLAB **add-on toolboxes**. If either is missing, `setup.m` downloads the `.mltbx` from its latest
+  GitHub release and installs it automatically (needs network).
 - **vislab-common/data** — the shared data store, a sibling folder alongside this repo. Its texture sheets
   and colour transforms ship inside the `vislab-common` repo (so `setup.m`'s auto-clone brings them along);
   the large calibrated **natural-image** set (~19 GB) is **too large for GitHub** and must be obtained
@@ -38,7 +39,7 @@ for the HBO model this builds on.
 - Install git (so that the `setup` script can automatically git clone the `vislab-common` dependency)
 - Within MATLAB, navigate to the repo folder and run:
 ```matlab
-setup            % adds this repo + vislab to the path; checks the toolboxes
+setup            % adds this repo + vislab to the path; auto-installs the gx2/IntClassNorm toolboxes if missing
 cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab-common/data isn't a sibling
 ```
 
@@ -47,7 +48,7 @@ cfg = config;    % paths + parameters; edit cfg.paths.data_root if vislab-common
 The `run_demo.m` script demonstrates the entire model lifecycle. By changing the `demo_type` variable at the top of the script, you can run it in two modes:
 
 - **`quick` mode**: Skips the expensive training phase (Stages 1-5) and uses the pre-trained models shipped in `data/models/`. It plots the learned parameters, and then evaluates the model (Stages 6-7) on a small set of Grown-Texture-Region (GTR) images. The evaluation takes a few minutes to run.
-- **`full` mode**: Re-trains the model from scratch (Stages 1-5) before evaluating. During training, the script will pause to ask if you want to save (and overwrite) the newly-learned parameters to disk.
+- **`full` mode**: Re-trains the model from scratch (Stages 1-5) before evaluating. Before training starts, the script asks once whether to save (and overwrite) the shipped, pre-installed parameter files with the newly-learned ones; answering no aborts the run.
 
 ```matlab
 run_demo      % runs the demo according to the selected demo_type
@@ -77,10 +78,9 @@ images and write artifacts to `data/models/`; stages 6–7 apply/evaluate it on 
 | Stage | Function (`pipeline/`) | Produces |
 |---|---|---|
 | 1 | `s1_learn_color_transform(cfg)` | `vislab-common/data/cps_lms2abr_otf.mat` — LMS→ABR colour rotation (lab-shared) |
-| 2 | `s2_learn_feature_priors(cfg)` | `priors_abr_mo13_mo23_cs33_otf.mat` — natural feature priors |
-| 3 | `s3_make_nearfar_pairs(cfg, ecc)` | `patch_pairs_ecc<ecc>.mat` — near/far training pairs |
+| 2+3 | `s23_learn_priors_and_pairs(cfg, ecc)` | `priors_abr_mo13_mo23_cs33_otf_ecc_<ecc>.mat` (per-ecc natural feature priors) + `patch_pairs_ecc<ecc>.mat` (near/far training pairs), in one pass over the images |
 | 4 | `s4_optimize_bins(cfg, dim, ecc)` | `AHEO<btype><dim><ecc>.mat` — adaptive histogram bins |
-| 5 | `s5_train_decision_vars(cfg, ecc)` | `dbnd{h,e,c,b,bc}NO<ecc>.mat` — trained decision-variable bounds |
+| 5 | `s5_train_decision_vars(cfg, ecc)` | `decision_bounds_ecc_<ecc>.mat` — trained decision-variable bounds |
 | 6 | `s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)` | per-image self-supervised discrimination accuracy surfaces (runs on GTR images built from Brodatz/Fabric source textures — see Quick demo) |
 | 7 | `s7_segment_gtr(cfg, method, itype, ecc, n_images)` | GTR segmentation: correct-region counts over the merge x grouping-offset grid |
 
@@ -107,10 +107,10 @@ The pipeline saves its trained parameters and intermediate datasets as `.mat` fi
 Here is a simple breakdown of the data files you'll encounter:
 
 - **`cps_lms2abr_otf.mat`**: The LMS→ABR color space transformation matrix. This file is **not** duplicated in this repository; it lives exclusively in the lab's shared `vislab-common/data/` folder so all projects use the exact same calibration.
-- **`priors_abr_mo13_mo23_cs33_otf.mat`**: The natural marginal probability distributions (priors) for the model's low-level image features.
+- **`priors_abr_mo13_mo23_cs33_otf_ecc_<ecc>.mat`**: The natural marginal probability distributions (priors) for the model's low-level image features, learned per eccentricity (ecc applies blur + downsampling, which changes the feature statistics).
 - **`patch_pairs_ecc<ecc>.mat`**: Large datasets of *near* (likely same texture) and *far* (likely different texture) patch pairs, extracted directly from unlabelled natural images to train the model.
 - **`AHEO<btype><dim><ecc>.mat`**: Adaptive histogram bin boundaries used for discretizing the feature responses.
-- **`decision_bounds_ecc<ecc>.mat`**: The final trained quadratic decision boundaries for determining whether two patches belong to the same or different textures.
+- **`decision_bounds_ecc_<ecc>.mat`**: The final trained quadratic decision boundaries for determining whether two patches belong to the same or different textures.
 
 *(Note: `<ecc>` refers to the spatial eccentricity-related downsampling factor of the patches, typically 1, 2, 4, or 8).*
 

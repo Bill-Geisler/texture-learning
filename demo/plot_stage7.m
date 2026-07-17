@@ -12,8 +12,7 @@ function plot_stage7(cfg, out, method, itype, ecc)
     psz = cfg.patch.size / ecc;
     ntexr = cfg.gtr.n_regions;
 
-    feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
-    cstat = zeros(1,20); cstat([1 5 6 7 9 10 11 13 14]) = 5;
+    cstat = zeros(1,20); cstat([1 5 9 10 13 14]) = 5;   % spot [1 13 14] + edge DV [5 9 10]
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, 1, double(cfg.optics.apply));
     dv = load_dv_handles(cfg, ecc, true);
     [imgr, imgg, imgb, nimg] = load_texture_images(cfg, itype, ecc);
@@ -29,10 +28,10 @@ function plot_stage7(cfg, out, method, itype, ecc)
         map = map3(:, :, 1);
         [pimg, px, py] = make_gtr_image(cfg, imgr, imgg, imgb, texs(1,:), map);
 
-        phiall = segmentation.content_similarity_matrix(pimg, szp, psz, px, py, bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
+        phiall = segmentation.content_similarity_matrix(pimg, psz, px, py, bin_bounds, n_bins, dv.h, dv.e, dv.c, cfg);
         rho = segmentation.mutual_similarity(phiall);
 
-        R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv, feature_list);
+        R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv);
         [qbs, qbd] = self_sup_decision(ss_method, R, dv);
         gc_vec = 0:0.8:8; wm_vec = 0:0.8:9.6;
         [~, ~, ~, pcnf] = nearfar_score_grid(qbs, qbd, R, gc_vec, wm_vec);
@@ -40,11 +39,11 @@ function plot_stage7(cfg, out, method, itype, ecc)
         [~, J] = max(row_best);
         gcopt = gc_vec(J); wmopt = wm_vec(col_at(J));
 
-        [phi, dst] = segmentation.neighbor_similarity_matrix(pimg, szp, psz, px, py, psz, bin_bounds, n_bins, feature_list, dv, cfg);
+        [phi, dst] = segmentation.neighbor_similarity_matrix(pimg, psz, px, py, psz, bin_bounds, n_bins, dv, cfg);
         mu = (phi + wmopt * rho) .* (phi ~= 0);
 
         cc_opt = 1.1;
-        [~, ~, groups2d] = segmentation.group_patches(mu, dst, szp, gcopt + dgc_opt, cc_opt, psz, px, py, phiall, mc_opt);
+        [~, ~, groups2d] = segmentation.group_patches(mu, dst, gcopt + dgc_opt, cc_opt, psz, px, py, phiall, mc_opt);
 
         % Use mean across channels to ensure a pure grayscale base image
         pimg_gray = mean(double(pimg), 3);

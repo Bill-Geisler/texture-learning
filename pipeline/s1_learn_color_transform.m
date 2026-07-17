@@ -1,6 +1,10 @@
-function coeff = s1_learn_color_transform(cfg)
+function coeff = s1_learn_color_transform(cfg, autosave)
 % S1_LEARN_COLOR_TRANSFORM  Learn the LMS->ABR PCA colour rotation from natural images.
 %   coeff = s1_learn_color_transform(cfg)
+%   coeff = s1_learn_color_transform(cfg, autosave)
+%
+%   autosave (optional) - true/false to save/skip without asking (used by
+%   run_demo, which confirms once up front); omit to be asked interactively.
 %
 %   Pipeline stage 1 (was mk_rot_mtrx.m). For every calibrated natural image:
 %   scale to 0..255, apply eye optics, convert to LMS cone space, sample random
@@ -22,41 +26,34 @@ function coeff = s1_learn_color_transform(cfg)
 %     coeff - 3x3 LMS->ABR rotation matrix; also saved to vislab-common/data as
 %             cps_lms2abr[_otf].mat (var `coeff`), shared across the lab.
 
-    psz    = cfg.patch.size;
     maxval = cfg.natural.max_val;
-    m0     = cfg.norm.target_mean;
-    c0     = cfg.norm.target_contrast;
-    n_colr = 3;
-    norm_type = 3;                                   % average-mean normalization
 
     files = list_natural_images(cfg);
     nsmp = ceil(cfg.natural.target_isolated_patches / numel(files));
 
-    lms_pixels = zeros(numel(files) * nsmp * psz^2, 3);
-    n = 0;
-
-    for f = 1:numel(files)
+    % One independent image per iteration -> parfor (runs serially without the
+    % Parallel Computing Toolbox). Each iteration returns its pixels into a cell.
+    pix_c = cell(1, numel(files));
+    parfor f = 1:numel(files)
         [~, fname, fext] = fileparts(files{f});
         fprintf('sampling %s\n', [fname, fext]);
         img_lms = vislab.nat_stat_bayes.source_to_lms(files{f}, cfg, struct('prescale', 255/maxval));
-        [n_rows, n_cols, ~] = size(img_lms);
-        for s = 1:nsmp
-            x = randi(n_rows - psz);
-            y = randi(n_cols - psz);
-            patch = img_lms(x:x+psz-1, y:y+psz-1, :);
-            patch = vislab.lib.ptch_norm(patch, m0, c0, norm_type, n_colr);
-            lms_pixels(n+1 : n+psz^2, :) = reshape(patch, [], 3);
-            n = n + psz^2;
-        end
+        pix_c{f} = sample_color_pixels(img_lms, nsmp, cfg);
     end
-    lms_pixels = lms_pixels(1:n, :);
+    lms_pixels = cat(1, pix_c{:});
+    n = size(lms_pixels, 1);
 
     coeff = pca(lms_pixels);                          % columns = principal (ABR) axes
 
-    if cfg.optics.apply, fname = 'cps_lms2abr_otf.mat'; else, fname = 'cps_lms2abr.mat'; end
-    out_path = fullfile(cfg.paths.data_root, fname);   % lab-global transform lives in the shared store
-    reply = input(sprintf('s1: Save LMS->ABR rotation to disk and overwrite %s? (y/n): ', fname), 's');
-    if strcmpi(reply, 'y')
+    if cfg.optics.apply, xform_file = 'cps_lms2abr_otf.mat'; else, xform_file = 'cps_lms2abr.mat'; end
+    out_path = fullfile(cfg.paths.data_root, xform_file);   % lab-global transform lives in the shared store
+    if nargin < 2 || isempty(autosave)
+        reply = input(sprintf('s1: Save LMS->ABR rotation to disk and overwrite %s? (y/n): ', xform_file), 's');
+        do_save = strcmpi(reply, 'y');
+    else
+        do_save = autosave;
+    end
+    if do_save
         save(out_path, 'coeff');
         fprintf('s1: saved LMS->ABR rotation to %s (%d pixels from %d images)\n', out_path, n, numel(files));
     else

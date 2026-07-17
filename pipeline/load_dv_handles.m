@@ -3,7 +3,7 @@ function dv = load_dv_handles(cfg, ecc, load_bc)
 %   dv = load_dv_handles(cfg, ecc, load_bc)
 %
 %   Builds function handles for the trained decision variables from the
-%   decision_bounds_ecc<ecc>.mat artifact (via quad2fun): dv.h (spot), dv.e (edge),
+%   decision_bounds_ecc_<ecc>.mat artifact (via quad2fun): dv.h (spot), dv.e (edge),
 %   dv.c (content), dv.b (border). If load_bc is true, also dv.bc (border+
 %   content). Shared by pipeline stages s6 and s7.
 %
@@ -12,7 +12,7 @@ function dv = load_dv_handles(cfg, ecc, load_bc)
 
     if nargin < 3 || isempty(load_bc), load_bc = false; end
     tag = num2str(ecc);
-    S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
+    S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc_' tag '.mat']), 'dbnd');
     dbnd = S.dbnd;
     
     dv.h = quad2fun(dbnd.h, 0);

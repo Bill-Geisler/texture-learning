@@ -1,6 +1,10 @@
-function s4_optimize_bins(cfg, dims, ecc)
+function s4_optimize_bins(cfg, dims, ecc, autosave)
 % S4_OPTIMIZE_BINS  Learn adaptive-histogram bin bounds for feature(s)/eccentricity.
 %   s4_optimize_bins(cfg, dims, ecc)
+%   s4_optimize_bins(cfg, dims, ecc, autosave)
+%
+%   autosave (optional) - true/false to save/skip without asking (used by
+%   run_demo, which confirms once up front); omit to be asked interactively.
 %
 %   Pipeline stage 4 (was opt_bins_nat.m + test_bnds_nat.m). Using the prior CDF
 %   of features in `dims` (from stage 2) and the near/far patch pairs (stage 3),
@@ -19,7 +23,7 @@ function s4_optimize_bins(cfg, dims, ecc)
 %
 %   Inputs
 %     cfg  - config struct (see config.m).
-%     dims - feature dimension(s) (e.g. [1 5 6 7 9 10 11 13 14]; see cfg.features.names).
+%     dims - feature dimension(s) (e.g. [1 5 9 10 13 14]; see cfg.features.names).
 %     ecc  - eccentricity downsample factor (1,2,4,8).
 
     btype   = 5;                          % bound type: natural images = 5
@@ -28,8 +32,7 @@ function s4_optimize_bins(cfg, dims, ecc)
     psz = cfg.patch.size / ecc;
 
     % --- load priors and patch pairs ONCE for all dims ---
-    if cfg.optics.apply, prior_file = 'priors_abr_mo13_mo23_cs33_otf.mat'; else, prior_file = 'priors_abr_mo13_mo23_cs33.mat'; end
-    priors = load(fullfile(cfg.paths.models, prior_file));
+    priors = load(fullfile(cfg.paths.models, prior_filename(cfg, ecc)));
 
     pp = load(fullfile(cfg.paths.stimuli, sprintf('patch_pairs_ecc%d.mat', ecc)), 'ptchn', 'ptchf');
     ptchn = pp.ptchn;
@@ -49,6 +52,12 @@ function s4_optimize_bins(cfg, dims, ecc)
         fprintf('s4: Optimizing adaptive bins for feature "%s"...\n', cfg.features.names{dim});
         [prior_x, prior_p] = prior_for_dim(priors, dim);
 
+        % Featurize each patch ONCE (bin-independent). The greedy search below only
+        % re-bins these values per candidate, instead of recomputing the steerable /
+        % center-surround responses for every pair on every candidate split.
+        [near_a, near_b] = feature_values(ptchn, dim, psz, cfg);
+        [far_a,  far_b]  = feature_values(ptchf, dim, psz, cfg);
+
         % --- adaptive histogram equalization: greedy bin splitting ---
         n_edges = numel(prior_p);
         n_bins = 2;
@@ -67,7 +76,7 @@ function s4_optimize_bins(cfg, dims, ecc)
             for i = 1:n_bins
                 if frozen(i) == 0
                     [cand_bounds, cand_indices] = vislab.nat_stat_bayes.find_bin_bound(bounds, indices, grown, i + offset, prior_x, prior_p);
-                    err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg);
+                    err = proximity_error(cand_bounds, near_a, near_b, far_a, far_b, cfg);
                     if (prev_err - err) / prev_err > err_crit
                         bounds = cand_bounds;
                         indices = cand_indices;
@@ -100,8 +109,13 @@ function s4_optimize_bins(cfg, dims, ecc)
     else
         dim_str = num2str(dims);
     end
-    reply = input(sprintf('s4: Save bin bounds to disk and overwrite %s for dims %s? (y/n): ', file, dim_str), 's');
-    if strcmpi(reply, 'y')
+    if nargin < 4 || isempty(autosave)
+        reply = input(sprintf('s4: Save bin bounds to disk and overwrite %s for dims %s? (y/n): ', file, dim_str), 's');
+        do_save = strcmpi(reply, 'y');
+    else
+        do_save = autosave;
+    end
+    if do_save
         save(out_path, '-struct', 'out');
         fprintf('s4: dims %s ecc %d -> updated %s\n', dim_str, ecc, out_path);
     else
@@ -148,37 +162,20 @@ function [prior_x, prior_p] = prior_for_dim(priors, dim)
 end
 
 % ------------------------------------------------------------------------------
-function err = proximity_error(dim, cand_bounds, ptchn, ptchf, psz, cfg)
-% Near-vs-far classification error for one feature under candidate bin bounds
-% (was test_bnds_nat.m). Uses the proximity proxy: near = "same", far = "different".
-    rng(cfg.seed);
-    max_dim = 20;
-    is_edge = dim > 3 && dim <= 11;
-
-    n_bins = zeros(1, max_dim);
-    n_bins(dim) = numel(cand_bounds);
-    bin_bounds = zeros(max_dim, n_bins(dim));
-    bin_bounds(dim, 1:n_bins(dim)) = cand_bounds;
-
-    feature_list = zeros(1, max_dim);
-    feature_list(dim) = 1;
-
-    near = dim_response(ptchn, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg);
-    far  = dim_response(ptchf, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg);
-
-    result = classify_normals(near, far, 'input_type', 'samp', 'plotmode', 0);
-    err = result.samp_opt_err;
-end
-
-% ------------------------------------------------------------------------------
-function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_list, psz, cfg)
-% Single-feature log decision-variable response over all patch pairs,
-% dropping outliers below -25 (as in the original).
+function [Va, Vb] = feature_values(patches, dim, psz, cfg)
+% Precompute, ONCE per feature, the per-pair raw values that get histogrammed for
+% `dim` on both patches of every pair -- the bin-INDEPENDENT half of the DV. Uses
+% the same featurizers as the decision variables (vislab spot_features /
+% edge_features), so the values are identical to what dv_spot_hist / dv_edge_hist
+% would compute; only the (bin-dependent) histogram + LLR is deferred to eval_r.
     m0 = cfg.norm.target_mean;
     c0 = cfg.norm.target_contrast;
+    is_edge = dim > 3 && dim <= 11;
+    feature_list = zeros(1, 20);
+    feature_list(dim) = 1;
     n_pairs = size(patches, 4);
-    vals = zeros(n_pairs, 1);
-    n = 0;
+    Va = cell(n_pairs, 1);
+    Vb = cell(n_pairs, 1);
     for i = 1:n_pairs
         % patches are stored as A (1-channel); patch_to_a passes them through. Older
         % 3-channel LMS files are normalized+rotated to A here instead (same result).
@@ -187,15 +184,48 @@ function vals = dim_response(patches, dim, is_edge, bin_bounds, n_bins, feature_
         if is_edge
             a1 = vislab.lib.cntrst_norm(p1(:, :, 1), c0, psz);
             a2 = vislab.lib.cntrst_norm(p2(:, :, 1), c0, psz);
-            dv = vislab.nat_stat_bayes.dv_edge_hist(a1, a2, 0, bin_bounds, n_bins, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
+            fa = vislab.nat_stat_bayes.edge_features(a1, 0, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
+            fb = vislab.nat_stat_bayes.edge_features(a2, 0, cfg.dv.sd1, cfg.dv.nsd1, cfg.dv.sd2, cfg.dv.nsd2, feature_list);
         else
-            dv = vislab.nat_stat_bayes.dv_spot_hist(p1, p2, psz, bin_bounds, n_bins, feature_list);
+            fa = vislab.nat_stat_bayes.spot_features(p1, psz, feature_list);
+            fb = vislab.nat_stat_bayes.spot_features(p2, psz, feature_list);
         end
-        r = log(dv(dim));
-        if r >= -25                       % drop -inf / extreme outliers
+        Va{i} = fa{dim};
+        Vb{i} = fb{dim};
+    end
+end
+
+% ------------------------------------------------------------------------------
+function err = proximity_error(cand_bounds, near_a, near_b, far_a, far_b, cfg)
+% Near-vs-far classification error for one feature under candidate bin bounds, from
+% the precomputed per-pair values (was test_bnds_nat.m). near = "same", far =
+% "different" (proximity proxy).
+    rng(cfg.seed);
+    near = eval_r(near_a, near_b, cand_bounds);
+    far  = eval_r(far_a,  far_b,  cand_bounds);
+    % samp_balance=true: near/far counts differ (independent outlier rejection above),
+    % but the proximity proxy is symmetric, so score the class-balanced error rather
+    % than the count-weighted one that would favour the majority class.
+    result = classify_normals(near, far, 'input_type', 'samp', 'plotmode', 0, 'samp_balance', true);
+    err = result.samp_opt_err;
+end
+
+% ------------------------------------------------------------------------------
+function r = eval_r(Va, Vb, edges)
+% Per-pair single-feature log LLR under candidate bin `edges`, dropping outliers
+% below -25 (as in the original). Only re-bins the precomputed values -- the
+% multinomial LLR of the two patches' histograms -- with no feature recomputation.
+    n_pairs = numel(Va);
+    r = zeros(n_pairs, 1);
+    n = 0;
+    for i = 1:n_pairs
+        N1 = histcounts(Va{i}, edges);
+        N2 = histcounts(Vb{i}, edges);
+        rv = log(vislab.nat_stat_bayes.multinomial_llr(N1, N2));
+        if rv >= -25                       % drop -inf / extreme outliers
             n = n + 1;
-            vals(n) = r;
+            r(n) = rv;
         end
     end
-    vals = vals(1:n);
+    r = r(1:n);
 end

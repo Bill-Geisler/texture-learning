@@ -1,14 +1,23 @@
-function plot_stage1b_gradients(cfg)
+function plot_stage1b_gradients(cfg, coeff)
 % PLOT_STAGE1B_GRADIENTS  Illustrative (exploratory) figure: the multi-scale
-%   first-derivative (gradient) structure of natural images, computed on
-%   isolated 64x64 patches (the model's actual same/different input size) taken
-%   from the achromatic (A) channel of the SAME sample image as the Stage 1
-%   colour figure.
+%   first-derivative (gradient) structure of natural images, computed on isolated
+%   64x64 patches (the model's actual same/different input size) from the
+%   achromatic (A) channel.
 %
-%   The model currently uses a SINGLE-scale (sigma=1 px) first-derivative
-%   steerable filter for its edge features. This panel measures the same filter
-%   FORM (vislab.lib.steerable_kernels) across scales on many 64x64 A-channel
-%   patches and shows:
+%   plot_stage1b_gradients(cfg)         quick mode: shipped LMS->ABR rotation,
+%                                       patches sampled from a SINGLE image.
+%   plot_stage1b_gradients(cfg, coeff)  full mode: just-learned rotation COEFF,
+%                                       patches sampled from ALL natural images.
+%
+%   Patch sampling is constant-volume, matching s1/s2: ceil(target/nfiles) random
+%   patches per image (cfg.natural.target_isolated_patches), so the TOTAL patch
+%   count is ~fixed regardless of how many images are used. PCA is computed on
+%   every sampled response; only the 3D scatters are subsampled (there are far too
+%   many points -- ~millions -- to draw them all).
+%
+%   The model currently uses a SINGLE-scale (sigma=1 px) first-derivative steerable
+%   filter for its edge features. This panel measures the same filter FORM
+%   (vislab.lib.steerable_kernels) across scales on the sampled patches and shows:
 %     1. horizontal and vertical responses are ~uncorrelated (H independent of V);
 %     2. responses ARE strongly correlated across scale within each orientation;
 %     3. PCA gives a decorrelated multi-scale basis -- the same idea as the
@@ -30,38 +39,32 @@ function plot_stage1b_gradients(cfg)
 %   leave too little, so the scale list is capped at sigma=8. Raise sd_list only
 %   if you also grab surrounding image context for each patch.
 %
-%   NOTE: purely illustrative -- NOT wired into the pipeline. PCA is on the RAW
-%   (linear) responses so it is a genuine linear decorrelation; the model's
-%   per-patch contrast normalization is not applied here.
+%   NOTE: purely illustrative -- NOT wired into the pipeline. Patches use the SAME
+%   preprocessing as the stage 2 gradient priors: sampled + mean-normalized by the
+%   shared sampler (sample_isolated_patches), rotated to ABR, A channel taken, then
+%   per-patch CONTRAST-normalized (vislab.lib.cntrst_norm) before the steerable
+%   responses. PCA is on those linear responses (a genuine linear decorrelation).
 
     nsd     = 6;                      % kernel width (SDs) for a SMOOTH illustration; the model itself uses cfg.dv.nsd1 = 3
     sd_list = [1 2 4 8];              % sigma=1 is the model's current scale; capped so nsd*sigma fits a 64px patch
     n_scales = numel(sd_list);
     psz     = cfg.patch.size;         % 64 px: the 1-deg patch the same/different features run on
-    n_patches = 400;                  % isolated patches sampled from the image
+    c0      = cfg.norm.target_contrast;      % target RMS contrast for the per-patch contrast norm (matches stage 2)
+    scatter_pts = cfg.demo.scatter_points;   % shared cap for the SCATTER only; PCA uses every sampled point
 
-    % --- same sample image and colour transform as plot_stage1 ---
-    try
-        img_path = fullfile(cfg.paths.data_root, 'CPS natural images', 'Set10_16_1.png');
-        if ~isfile(img_path), error('CPS natural image not found.'); end
-        img = double(imread(img_path));
-    catch
-        fprintf('Could not load natural image for Stage 1b plot.\n');
+    files = list_natural_images(cfg);
+    if isempty(files)
+        fprintf('Could not find natural images for Stage 1b plot.\n');
         return;
     end
-    img_lms = vislab.lib.rgb2lms(img);
-    if cfg.optics.apply, fname = 'cps_lms2abr_otf.mat'; else, fname = 'cps_lms2abr.mat'; end
-    s = load(fullfile(cfg.paths.data_root, fname), 'coeff');
-    coeff = s.coeff;
 
-    % achromatic (A) channel of ABR space -- features are computed on A only
-    [h, w, ~] = size(img_lms);
-    abr = reshape(reshape(img_lms, [], 3) * coeff, h, w, 3);
-    A = abr(:, :, 1);
-
-    % apply the eye's optics, matching the model's feature-extraction preprocessing
-    if cfg.optics.apply
-        A = vislab.lib.otf_filter(A, cfg.optics.ppd, cfg.optics.pupil_diameter, cfg.optics.wavelength);
+    % LMS->ABR rotation: use the just-learned one if given (full mode), else the
+    % shipped one from disk (quick mode). Quick mode also restricts to ONE image.
+    if nargin < 2 || isempty(coeff)
+        if cfg.optics.apply, fname = 'cps_lms2abr_otf.mat'; else, fname = 'cps_lms2abr.mat'; end
+        s = load(fullfile(cfg.paths.data_root, fname), 'coeff');
+        coeff = s.coeff;
+        files = files(1);            % quick mode: a single image
     end
 
     % --- steerable kernels; check every one fits inside a 64px patch ---
@@ -71,39 +74,52 @@ function plot_stage1b_gradients(cfg)
         error('plot_stage1b:filterTooLarge', ...
               'sigma=%d filter (%dpx) does not fit in a %dpx patch.', max(sd_list), nsd*max(sd_list), psz);
     end
-    kh_bank = cell(1, n_scales);
     KHc = cell(1, n_scales); KVc = cell(1, n_scales);
     for i = 1:n_scales
         [KHc{i}, KVc{i}] = vislab.lib.steerable_kernels(sd_list(i), nsd);
-        kh_bank{i} = KHc{i};
     end
 
-    % --- sample isolated psz x psz patches on a regular grid (deterministic) ---
-    % features run on each patch ALONE (no surrounding context), so we crop the
-    % largest kernel's border and keep the identical valid interior at every scale.
-    xs_grid = 1:psz:(h - psz + 1);
-    ys_grid = 1:psz:(w - psz + 1);
-    [gx, gy] = ndgrid(xs_grid, ys_grid);
-    locs = [gx(:), gy(:)];
-    if size(locs, 1) > n_patches                    % thin out to n_patches, evenly
-        locs = locs(round(linspace(1, size(locs, 1), n_patches)), :);
-    end
-    n_patches = size(locs, 1);
-
-    H = zeros(n_patches * vpx^2, n_scales);          % horizontal responses
-    V = zeros(n_patches * vpx^2, n_scales);          % vertical responses
-    row = 0;
-    for p = 1:n_patches
-        patch = A(locs(p,1):locs(p,1)+psz-1, locs(p,2):locs(p,2)+psz-1);
-        for i = 1:n_scales
-            gh = conv2(patch, KHc{i}, 'same'); gh = gh(max_hw+1:end-max_hw, max_hw+1:end-max_hw);
-            gv = conv2(patch, KVc{i}, 'same'); gv = gv(max_hw+1:end-max_hw, max_hw+1:end-max_hw);
-            H(row+1:row+vpx^2, i) = gh(:);
-            V(row+1:row+vpx^2, i) = gv(:);
+    % --- constant-volume patch sampling, matching s1/s2: ceil(target/nfiles) random
+    %     patches per image, so the TOTAL patch count is fixed (~target) regardless
+    %     of how many images (one in quick mode, all in full mode). Features run on
+    %     each patch ALONE (no surrounding context), so we crop the largest kernel's
+    %     border and keep the identical valid interior at every scale. ---
+    nsmp = ceil(cfg.natural.target_isolated_patches / numel(files));
+    fprintf('stage 1b: sampling %d patches from %d image(s)...\n', numel(files) * nsmp, numel(files));
+    % Same ingestion + patch sampling as stage 2's priors: source_to_lms (optics)
+    % then the shared sample_isolated_patches (mean-normalized patches). One
+    % independent image per iteration -> parfor (runs serially without the Parallel
+    % Computing Toolbox), matching s1/s2/s3. Each returns its H/V rows. Gradients
+    % are taken on the achromatic (A) channel of each mean-normalized patch.
+    prescale = 255 / cfg.natural.max_val;
+    Hc = cell(1, numel(files));
+    Vc = cell(1, numel(files));
+    if numel(files) > 1, nw = Inf; else, nw = 0; end   % one image (quick mode): stay serial, no pool
+    parfor (f = 1:numel(files), nw)
+        [~, fname, fext] = fileparts(files{f});
+        fprintf('sampling %s\n', [fname, fext]);
+        img_lms = vislab.nat_stat_bayes.source_to_lms(files{f}, cfg, struct('prescale', prescale));
+        patches = sample_isolated_patches(img_lms, nsmp, psz, cfg);  % shared with stage 23 priors
+        Hf = zeros(nsmp * vpx^2, n_scales);  % this image's horizontal responses
+        Vf = zeros(nsmp * vpx^2, n_scales);  % this image's vertical responses
+        r = 0;
+        for k = 1:nsmp
+            abr = vislab.nat_stat_bayes.apply_color_rotation(patches(:, :, :, k), coeff);
+            patch = vislab.lib.cntrst_norm(abr(:, :, 1), c0, psz);   % A channel, contrast-normalized (matches stage 2 gradient priors)
+            for i = 1:n_scales
+                gh = conv2(patch, KHc{i}, 'same'); gh = gh(max_hw+1:end-max_hw, max_hw+1:end-max_hw);
+                gv = conv2(patch, KVc{i}, 'same'); gv = gv(max_hw+1:end-max_hw, max_hw+1:end-max_hw);
+                Hf(r+1:r+vpx^2, i) = gh(:);
+                Vf(r+1:r+vpx^2, i) = gv(:);
+            end
+            r = r + vpx^2;
         end
-        row = row + vpx^2;
+        Hc{f} = Hf;
+        Vc{f} = Vf;
     end
-    R_all = [H, V];                                  % (n_patches*vpx^2) x (2*n_scales)
+    H = cat(1, Hc{:});
+    V = cat(1, Vc{:});
+    R_all = [H, V];                          % (npatch*vpx^2) x (2*n_scales)
 
     % --- statistics: PCA on the JOINT horizontal+vertical set (like the deck) ---
     % Column order of R_all is [H sigma1..N, V sigma1..N].
@@ -143,8 +159,9 @@ function plot_stage1b_gradients(cfg)
            'Position', [40 40 1500 980]);
     t = tiledlayout(3, 6, 'TileSpacing', 'compact', 'Padding', 'compact');
     t.Units = 'normalized'; t.OuterPosition = [0 0 1 0.93];   % leave a top strip for the title
+    if numel(files) > 1, src_txt = sprintf('%d natural images', numel(files)); else, src_txt = 'one natural image'; end
     annotation(gcf, 'textbox', [0.1 0.94 0.8 0.05], ...
-        'String', 'Stage 1b: joint dist. of gradients at different scales on example natural image', ...
+        'String', sprintf('Stage 1b: joint dist. of gradients at different scales (%s)', src_txt), ...
         'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
         'FontWeight', 'bold', 'FontSize', 12, 'EdgeColor', 'none');
 
@@ -173,10 +190,10 @@ function plot_stage1b_gradients(cfg)
 
     % --- Row 2a: raw H responses at the 3 largest scales (correlated cloud) ---
     nobs = size(H, 1);
-    si   = round(linspace(1, nobs, min(nobs, 3000)));                 % subsample for a readable scatter
+    si   = randperm(nobs, min(nobs, scatter_pts));                    % random subsample for a readable scatter
     big3 = sc(1:3);                                                    % 3 largest scales
     nexttile([1 3]);
-    scatter3(H(si, big3(1)), H(si, big3(2)), H(si, big3(3)), 6, 'k', '.');
+    scatter3(H(si, big3(1)), H(si, big3(2)), H(si, big3(3)), 3, 'k', '.');
     grid on; view(3);
     local_bulk_lims(H(:, big3(1)), H(:, big3(2)), H(:, big3(3)));   % zoom past outliers to the bulk
     set(gca, 'XTickLabel', [], 'YTickLabel', [], 'ZTickLabel', []); % drop tick labels, keep grid
@@ -187,7 +204,7 @@ function plot_stage1b_gradients(cfg)
 
     % --- Row 2b: PCA of the H responses (decorrelated cloud) ---
     nexttile([1 3]);
-    scatter3(scoreH(si, 1), scoreH(si, 2), scoreH(si, 3), 6, 'k', '.');
+    scatter3(scoreH(si, 1), scoreH(si, 2), scoreH(si, 3), 3, 'k', '.');
     grid on; view(3);
     local_bulk_lims(scoreH(:, 1), scoreH(:, 2), scoreH(:, 3));
     set(gca, 'XTickLabel', [], 'YTickLabel', [], 'ZTickLabel', []); % drop tick labels, keep grid

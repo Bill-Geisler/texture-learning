@@ -34,8 +34,7 @@ function out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)
     eccb = 1;                                   % bin-bounds eccentricity (see note)
     cfg.optics.pupil_diameter = mp.pd;          % method-specific pupil for the OTF
 
-    feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
-    cstat        = zeros(1,20); cstat([1 5 6 7 9 10 11 13 14]) = 5;
+    cstat        = zeros(1,20); cstat([1 5 9 10 13 14]) = 5;   % spot [1 13 14] + edge DV [5 9 10]
 
     % artifacts: bin bounds + trained DV handles (LMS->ABR transform is auto-loaded by apply_color_rotation)
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
@@ -53,10 +52,10 @@ function out = s6_selfsup_discrimination(cfg, method, itype, ecc, ntrl)
 
     for trl = 1:ntrl
         [pimg, px, py] = make_gtr_image(cfg, imgr, imgg, imgb, texs(trl,:), maps(:,:,trl));
-        phiall = segmentation.content_similarity_matrix(pimg, cfg.gtr.szp, size(pimg,1)/cfg.gtr.szp, ...
-            px, py, bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
+        phiall = segmentation.content_similarity_matrix(pimg, size(pimg,1)/cfg.gtr.szp, ...
+            px, py, bin_bounds, n_bins, dv.h, dv.e, dv.c, cfg);
         rho = segmentation.mutual_similarity(phiall);
-        R = neighbor_far_responses(cfg, pimg, rho, maps(:,:,trl), bin_bounds, n_bins, dv, feature_list);
+        R = neighbor_far_responses(cfg, pimg, rho, maps(:,:,trl), bin_bounds, n_bins, dv);
 
         % per-image self-supervised step -> combined near/far decision variables qbs/qbd
         [qbs, qbd] = self_sup_decision(method, R, dv);

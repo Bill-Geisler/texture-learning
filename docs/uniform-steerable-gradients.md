@@ -45,9 +45,9 @@ Within the Bayesian pipeline, `vislab.lib.steerable_kernels` /
   (the crop is `floor(sd*nsd/2 + 1)`, so it grows with `nsd`);
 - `vislab.nat_stat_bayes.dv_edge_hist` (edge + bar histogram LLRs);
 - `vislab.nat_stat_bayes.dv_border` (border DV, calls `steerable_kernels` directly);
-- `pipeline/s2_learn_feature_priors.m` — **hardcodes `nsd1=3; nsd2=3`** instead of
-  reading `cfg.dv.nsd1/nsd2` (config landmine: changing config alone would leave
-  s2 inconsistent).
+- `pipeline/sample_prior_features.m` (the per-image sampler for the Stage 2+3
+  priors) — reads `cfg.dv.sd1/nsd1/sd2/nsd2`, so its kernel stays consistent with
+  the rest of the pipeline when the config changes.
 
 `camouflage_detection` and `texture-segmentation` each use their **own**
 `steerable_filter` and are **not** affected by changes to `steerable_kernels`.
@@ -57,7 +57,7 @@ Within the Bayesian pipeline, `vislab.lib.steerable_kernels` /
 Mostly **silent numerical drift**, not crashes:
 
 1. **Trained artifacts go stale.** The shipped `priors_*.mat` (s2),
-   `AHEO_bins.mat` (s4), and `decision_bounds_ecc*.mat` (s5) were all fit on
+   `AHEO_bins.mat` (s4), and `decision_bounds_ecc_*.mat` (s5) were all fit on
    `nsd=3` responses. Changing the kernel shifts response magnitudes/shapes, so
    the frozen histogram bins and decision bounds become miscalibrated → s6/s7
    accuracy quietly degrades with no error.
@@ -82,7 +82,7 @@ Mostly **silent numerical drift**, not crashes:
    `gauss_deriv2_kernels`), and have `texture-segmentation` and
    `camouflage_detection` call it (or a thin wrapper) instead of their local
    copies. Keep the function *signature* stable so callers don't churn.
-3. **Make `nsd` a single source of truth**: fix `s2_learn_feature_priors.m` to
+3. **Make `nsd` a single source of truth**: fix `sample_prior_features.m` to
    read `cfg.dv.nsd1/nsd2` rather than hardcoding.
 4. **Re-tune / re-verify the 2nd-derivative** `scale45` (and the zero-mean step)
    for whatever window is chosen, or hold `nsd2` fixed.

@@ -11,7 +11,7 @@ function plot_stage5_intermediate(cfg, ecc, R_near, R_far)
     tag = num2str(ecc);
 
     try
-        S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
+        S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc_' tag '.mat']), 'dbnd');
         dbndh = S.dbnd.h;
         dbnde = S.dbnd.e;
         dbndb = S.dbnd.b;
@@ -37,7 +37,7 @@ function plot_stage5_intermediate(cfg, ecc, R_near, R_far)
 
     subplot(3, 3, 3);
     local_dv_hist(dvh, near_h, far_h, 'Spot DV');
-    legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+    dv_legend();
 
     % ==========================================
     % ROW 2: EDGE DV  (features [5 9 10])
@@ -75,8 +75,8 @@ function local_scatter3_bd(dv, near_pts, far_pts, labels)
 % axis labels coloured to match the d'-contribution bar sections (lines(dim)).
     dcol = lines(numel(labels));
     hold on;
-    scatter3(far_pts(:,1),  far_pts(:,2),  far_pts(:,3),  15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
-    scatter3(near_pts(:,1), near_pts(:,2), near_pts(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(far_pts(:,1),  far_pts(:,2),  far_pts(:,3),  2, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(near_pts(:,1), near_pts(:,2), near_pts(:,3), 2, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
 
     x_min = min([near_pts(:,1); far_pts(:,1)]) - 1; x_max = max([near_pts(:,1); far_pts(:,1)]) + 1;
     y_min = min([near_pts(:,2); far_pts(:,2)]) - 1; y_max = max([near_pts(:,2); far_pts(:,2)]) + 1;
@@ -101,14 +101,14 @@ function local_scatter2_bd(dv, near_pts, far_pts, labels)
 % Ticks off, grid on, axis labels coloured to match the contribution bar.
     dcol = lines(numel(labels));
     hold on;
-    scatter(far_pts(:,1),  far_pts(:,2),  15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
-    scatter(near_pts(:,1), near_pts(:,2), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter(far_pts(:,1),  far_pts(:,2),  2, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter(near_pts(:,1), near_pts(:,2), 2, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
 
     x_min = min([near_pts(:,1); far_pts(:,1)]) - 1; x_max = max([near_pts(:,1); far_pts(:,1)]) + 1;
     y_min = min([near_pts(:,2); far_pts(:,2)]) - 1; y_max = max([near_pts(:,2); far_pts(:,2)]) + 1;
     [Xg, Yg] = meshgrid(linspace(x_min, x_max, 200), linspace(y_min, y_max, 200));
     Zg = reshape(apply_dv(dv, [Xg(:), Yg(:)]), size(Xg));
-    contour(Xg, Yg, Zg, [0 0], 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
+    contour(Xg, Yg, Zg, [0 0], 'Color', [0.5 0.5 0.5], 'LineWidth', 1);
     grid on;
     set(gca, 'XTickLabel', [], 'YTickLabel', []);                     % no ticks, keep grid
     xlabel(labels{1}, 'Color', dcol(1,:));

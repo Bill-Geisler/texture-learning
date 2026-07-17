@@ -12,7 +12,7 @@ function plot_stage5(cfg, ecc, R_near, R_far)
 
     % Load all necessary bounds
     try
-        S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc' tag '.mat']), 'dbnd');
+        S = load(fullfile(cfg.paths.models, ['decision_bounds_ecc_' tag '.mat']), 'dbnd');
         dbndh = S.dbnd.h;
         dbnde = S.dbnd.e;
         dbndc = S.dbnd.c;
@@ -47,8 +47,8 @@ function plot_stage5(cfg, ecc, R_near, R_far)
     % ==========================================
     ccol = lines(3);
     subplot(2, 3, 1); hold on;
-    scatter3(content_far(:,1),  content_far(:,2),  content_far(:,3),  15, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
-    scatter3(content_near(:,1), content_near(:,2), content_near(:,3), 15, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(content_far(:,1),  content_far(:,2),  content_far(:,3),  2, 'r', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
+    scatter3(content_near(:,1), content_near(:,2), content_near(:,3), 2, 'b', 'filled', 'MarkerEdgeColor', 'none', 'MarkerFaceAlpha', 0.6);
     x_min_c = min([content_near(:,1); content_far(:,1)]) - 1; x_max_c = max([content_near(:,1); content_far(:,1)]) + 1;
     y_min_c = min([content_near(:,2); content_far(:,2)]) - 1; y_max_c = max([content_near(:,2); content_far(:,2)]) + 1;
     z_min_c = min([content_near(:,3); content_far(:,3)]) - 1; z_max_c = max([content_near(:,3); content_far(:,3)]) + 1;
@@ -75,7 +75,7 @@ function plot_stage5(cfg, ecc, R_near, R_far)
     histogram(same_c, 'FaceColor', 'b', 'Normalization', 'pdf', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
     set(gca, 'YTick', []);
     xlabel('Content DV');
-    legend('Far Pairs', 'Near Pairs', 'Location', 'best');
+    dv_legend();
 
     % ==========================================
     % ROW 2: FINAL OVERALL BOUNDARY  ([content, border])
@@ -94,14 +94,14 @@ function plot_stage5(cfg, ecc, R_near, R_far)
     imagesc(X(1,:), Y(:,1), Z); axis xy; hold on;
     contour(X, Y, Z, [0 0], 'k', 'LineWidth', 2);
     try
-        cb = colorbarpzn(min(Z(:)), max(Z(:)));
+        cb = vislab.lib.colorbarpzn(min(Z(:)), max(Z(:)));
         cb.Label.String = 'Decision Variable Value';
     catch
         cb = colorbar;
         cb.Label.String = 'Decision Variable Value';
     end
-    scatter(diff_c, diff_b, 10, 'r', 'filled', 'MarkerEdgeColor', 'none', 'LineWidth', 0.5);
-    scatter(same_c, same_b, 10, 'b', 'filled', 'MarkerEdgeColor', 'none', 'LineWidth', 0.5);
+    scatter(diff_c, diff_b, 2, 'r', 'filled', 'MarkerEdgeColor', 'none', 'LineWidth', 0.5);
+    scatter(same_c, same_b, 2, 'b', 'filled', 'MarkerEdgeColor', 'none', 'LineWidth', 0.5);
     set(gca, 'XTickLabel', [], 'YTickLabel', []);                     % no ticks
     title('Constructing Final DV (Border + Content)');
     xlabel('Content DV', 'Color', fcol(1,:)); ylabel('Border DV', 'Color', fcol(2,:));

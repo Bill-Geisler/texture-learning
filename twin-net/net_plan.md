@@ -70,17 +70,14 @@ spatial-frequency channels at one stage. Options to add that, cheapest → most 
 | **Dilated (atrous) convolution** | `dilated` | **9,681** (= baseline; dilation is parameter-free) | same small kernel spaced out to cover a larger extent; several dilations in parallel | Parallel SF channels with **few/no extra parameters** (stays lean) | One kernel *shape*; wide dilations can skip detail between sampled points ("gridding") | Cheapest way to add scales, respects the lean goal — good first experiment |
 | **Multi-size filter bank at layer 1** (Inception-style) | `multiscale` | **14,561** (3×3 bank ×3 + tail) | several conv layers of different kernel sizes (e.g. 3×3, 7×7, 15×15) on the input, channels concatenated | Directly mimics V1's multiple SF channels; fully learnable | **Adds parameters** → pushes back toward overfitting | Faithful and flexible, but heavier on capacity |
 | **Gaussian/Laplacian pyramid front end** | `pyramid` | **7,633** (lean config; *below* baseline) | downsample the patch into a few resolutions, convolve each, then combine and pool | Closest to the steerable-pyramid / Portilla–Simoncelli texture model and the Bayesian power-spectrum-across-scales features; most interpretable and on-theme | More plumbing; averaging levels to a common size discards some fine detail | Most principled — best V1- and Bayesian-alignment, and can be the leanest |
-| **Pyramid, widened** | `pyramid_wide` | **11,137** (~1.15× baseline) | same 3-scale pyramid as `pyramid` (bc=8), tail widened to `nChan=48` (embedding 96) | Small capacity bump to lift accuracy while keeping the pyramid's texture edge | ~1.15× params; still risks locking onto natural-specific structure (on-the-fly sampling blocks *memorization*, not this) | Gentle probe — a 29k version (bc=16, nChan=64) erased the Brodatz-over-nat edge, so kept small |
 
 Notes:
 - **Parameter counts** are total learned weights + biases (conv stack + the fc head, `2C+1`: e.g. 65 for
-  `C = 32`, 97 for `C = 48`). **Baseline = 9,681** for reference. Dilation is parameter-free
-  (`dilated` = baseline); the bank is ~50% more; the lean `pyramid` is *below* baseline at 7,633;
-  `pyramid_wide` is a small step up at 11,137 (~1.15× baseline).
+  `C = 32`). **Baseline = 9,681** for reference. Dilation is parameter-free
+  (`dilated` = baseline); the bank is ~50% more; the lean `pyramid` is *below* baseline at 7,633.
 - **Lean pyramid config** (the `pyramid` switch, 7,633 params): 3 scales via average-pooling (1 / 2 / 4),
   a per-scale 5×5×8 conv, each resized to a common 12×12 and depth-concatenated (24 channels), then a
-  single 3×3×32 tail conv → 10×10×32. `pyramid_wide` is the same graph with the same 8 ch/scale and a
-  48-channel tail (`nChan=48`). Average-pool is a box approximation to a Gaussian pyramid; a Laplacian
+  single 3×3×32 tail conv → 10×10×32. Average-pool is a box approximation to a Gaussian pyramid; a Laplacian
   variant would use scale differences.
 - **`poolStats` extends naturally:** pool mean/std within each (scale, orientation) channel → per-scale
   statistics, i.e. essentially the steerable-pyramid texture descriptor.
@@ -90,8 +87,37 @@ Notes:
   same objection as the ruled-out fixed Bayesian front end ("the network would learn nothing new"); a *learnable*
   multi-scale first layer (dilated or multi-size) keeps the network learning while adding scale diversity.
 
+### 8. Break the texture-accuracy plateau — change *what's learned*, not capacity
+
+**Finding (2026-07-16):** across every architecture and capacity tried (`baseline`, `dilated`,
+`multiscale`, `pyramid`; 7.6k–29k params), texture accuracy is essentially flat —
+test(all textures) ~0.85–0.87 and **test(Brodatz) pinned at ~0.80–0.81**. Only the natural *proxy*
+(test(nat)) moves with capacity, so the Brodatz-over-nat "edge" shrinks from the bottom (nat rising to a
+flat Brodatz), not the top. **Capacity is not the lever for texture transfer.** The edge is a signature of
+relying on transferable texture features rather than near/far shortcuts (e.g. shared low-frequency shading
+between neighboring patches — see Lessons learned). To push Brodatz toward the Bayesian ~0.927 anchor,
+change what the network learns, roughly in order of expected leverage:
+
+1. **Loss — metric learning (contrastive / triplet).** Shape the embedding space directly (same → close,
+   different → far) instead of rewarding near/far classification accuracy, which the proxy shortcuts
+   inflate. Biggest untried lever. (Tradeoffs in the §6 table.)
+2. **Training signal — remove the near/far confounds.** Higher near/far accuracy is partly won on
+   natural-specific cues (shared shading) absent in Brodatz. High-pass / contrast-normalize the patches so
+   near/far can only be solved by texture, forcing texture-transferable features. (Goes beyond the §5
+   contrast-normalization *ablation* — here it's deliberate confound removal from the training signal.)
+3. **Readout — small nonlinear head.** Replace the single fc layer on `|Y1−Y2|` with `fc → ReLU → fc`, so
+   the decision can model interactions between embedding dimensions rather than a weighted L1 distance.
+   Cheapest; least likely to be transformative alone.
+
+Judge each by **test(Brodatz) rising above the ~0.81 plateau** — raw near/far accuracy is a misleading
+target because it rewards shortcut-exploitation.
+
 ## Lessons learned
 
+- **Texture accuracy plateaus at ~0.81 (Brodatz) regardless of capacity/architecture** (7.6k–29k params,
+  `baseline` → `pyramid`); only the natural *proxy* moves. Capacity is not the lever — the
+  Brodatz-over-nat edge is a texture-purity signature, and raw near/far accuracy is a misleading target
+  (it rewards natural-specific shortcuts). Next levers are the loss / training signal / readout — see §8.
 - **Order-invariant pooling is necessary but not sufficient** — it removes spatial-layout
   shortcuts but not other non-texture cues (e.g. shared low-frequency shading between adjacent
   patches) that survive pooling because they're in *what's* detected, not *where*.

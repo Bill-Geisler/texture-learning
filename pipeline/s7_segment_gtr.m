@@ -18,7 +18,8 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
 %     'ncb' - border+content-based: trained bc DV, no shift (was ..._ncbm; 'bc_noshift').
 %   itype:    texture dataset (default 3 = Brodatz).
 %   ecc:      eccentricity (default 1).
-%   n_images: number of GTR images to average over (default 120 = 10 seeds x 12).
+%   n_images: number of GTR images to average over (default 120). Images are drawn
+%             from the current RNG state (no fixed seed), so they vary between runs.
 %
 %   Run `setup` first; requires stages 2,4,5 artifacts + IntClassNorm.
 %   NOTE: the original hardcoded the neighbour distance dmin=64 px regardless of
@@ -38,8 +39,7 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
     psz    = cfg.patch.size / ecc;              % patch size in pixels = neighbour distance
     ntexr  = cfg.gtr.n_regions;
 
-    feature_list = zeros(1,20); feature_list([1 5 6 7 9 10 11 13 14]) = 1;
-    cstat        = zeros(1,20); cstat([1 5 6 7 9 10 11 13 14]) = 5;
+    cstat        = zeros(1,20); cstat([1 5 9 10 13 14]) = 5;   % spot [1 13 14] + edge DV [5 9 10]
 
     % artifacts: bin bounds + trained DV handles (bc bound needed; LMS->ABR auto-loaded by apply_color_rotation)
     [n_bins, bin_bounds] = vislab.nat_stat_bayes.load_bin_bounds(cstat, eccb, double(cfg.optics.apply));
@@ -56,60 +56,50 @@ function out = s7_segment_gtr(cfg, method, itype, ecc, n_images)
     dgc_vec = 0 : 0.25 : 2;      % grouping-criterion offset added to gcopt
     nmc = numel(mc_vec);  ndgc = numel(dgc_vec);  ncc = numel(cc_vec);
 
-    ngtrimg = 12;                                % GTR images per random seed
-    nseed   = ceil(n_images / ngtrimg);
-    nregs   = zeros(nmc, ndgc, n_images);        % correct-region count per (mc, dgc, image)
+    nregs = zeros(nmc, ndgc, n_images);          % correct-region count per (mc, dgc, image)
 
-    imgnum = 0;
-    for seed = 1:nseed
-        rng(seed - 1);                           % reseed per block of 12 (matches originals)
-        for g = 1:ngtrimg
-            imgnum = imgnum + 1;
-            if imgnum > n_images, break; end
+    for imgnum = 1:n_images
+        % --- build one GTR image (rng order: textures -> masks -> far sampling). No
+        %     fixed seed, so the images differ every run (see rng('shuffle') in run_demo). ---
+        texs = gtr.sample_texture_ids(nimg, ntexr, 1);
+        [~, map3] = gtr.grow_region_masks(szp, ntexr, 1, cfg.gtr.seed_radius, cfg.gtr.coverage);
+        map = map3(:, :, 1);
+        [pimg, px, py] = make_gtr_image(cfg, imgr, imgg, imgb, texs(1,:), map);
 
-            % --- build one GTR image (rng order: textures -> masks -> far sampling) ---
-            texs = gtr.sample_texture_ids(nimg, ntexr, 1);
-            [~, map3] = gtr.grow_region_masks(szp, ntexr, 1, cfg.gtr.seed_radius, cfg.gtr.coverage);
-            map = map3(:, :, 1);
-            [pimg, px, py] = make_gtr_image(cfg, imgr, imgg, imgb, texs(1,:), map);
+        % --- content similarity + mutual similarity ---
+        phiall = segmentation.content_similarity_matrix(pimg, psz, px, py, ...
+            bin_bounds, n_bins, dv.h, dv.e, dv.c, cfg);
+        rho = segmentation.mutual_similarity(phiall);
 
-            % --- content similarity + mutual similarity ---
-            phiall = segmentation.content_similarity_matrix(pimg, szp, psz, px, py, ...
-                bin_bounds, n_bins, feature_list, dv.h, dv.e, dv.c, cfg);
-            rho = segmentation.mutual_similarity(phiall);
+        % --- 1. learn gcopt/wmopt from the self-supervised near/far task ---
+        R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv);
+        [qbs, qbd] = self_sup_decision(ss_method, R, dv);
+        [~, ~, ~, pcnf] = nearfar_score_grid(qbs, qbd, R, gc_vec, wm_vec);
+        [row_best, col_at] = max(pcnf, [], 2);   % best wm per gc
+        [~, J] = max(row_best);                  % best gc
+        gcopt = gc_vec(J);
+        wmopt = wm_vec(col_at(J));
 
-            % --- 1. learn gcopt/wmopt from the self-supervised near/far task ---
-            R = neighbor_far_responses(cfg, pimg, rho, map, bin_bounds, n_bins, dv, feature_list);
-            [qbs, qbd] = self_sup_decision(ss_method, R, dv);
-            [~, ~, ~, pcnf] = nearfar_score_grid(qbs, qbd, R, gc_vec, wm_vec);
-            [row_best, col_at] = max(pcnf, [], 2);   % best wm per gc
-            [~, J] = max(row_best);                  % best gc
-            gcopt = gc_vec(J);
-            wmopt = wm_vec(col_at(J));
+        % --- 2. neighbour similarity + combined mu = phi + wmopt*rho ---
+        [phi, dst] = segmentation.neighbor_similarity_matrix(pimg, psz, px, py, ...
+            psz, bin_bounds, n_bins, dv, cfg);
+        mu = (phi + wmopt * rho) .* (phi ~= 0);  % combine only on neighbouring pairs
 
-            % --- 2. neighbour similarity + combined mu = phi + wmopt*rho ---
-            [phi, dst] = segmentation.neighbor_similarity_matrix(pimg, szp, psz, px, py, ...
-                psz, bin_bounds, n_bins, feature_list, dv, cfg);
-            mu = (phi + wmopt * rho) .* (phi ~= 0);  % combine only on neighbouring pairs
-
-            % --- 3. group + score, swept over dgc x mc (x cc) ---
-            for l = 1:ndgc
-                for k = 1:nmc
-                    nreg = 0;
-                    for c = 1:ncc
-                        [~, ngrps, groups2d] = segmentation.group_patches(mu, dst, szp, ...
-                            gcopt + dgc_vec(l), cc_vec(c), psz, px, py, phiall, mc_vec(k));
-                        nreg = segmentation.count_correct_regions(map, ntexr, groups2d, ngrps, szp);
-                    end
-                    nregs(k, l, imgnum) = nreg;      % last cc (single cc in the originals)
+        % --- 3. group + score, swept over dgc x mc (x cc) ---
+        for l = 1:ndgc
+            for k = 1:nmc
+                nreg = 0;
+                for c = 1:ncc
+                    [~, ngrps, groups2d] = segmentation.group_patches(mu, dst, ...
+                        gcopt + dgc_vec(l), cc_vec(c), psz, px, py, phiall, mc_vec(k));
+                    nreg = segmentation.count_correct_regions(map, ntexr, groups2d, ngrps);
                 end
+                nregs(k, l, imgnum) = nreg;      % last cc (single cc in the originals)
             end
         end
-        if imgnum >= n_images, break; end
     end
 
-    nregs = nregs(:, :, 1:min(imgnum, n_images));
-    ngtr  = size(nregs, 3);
+    ngtr = size(nregs, 3);
     exact = double(nregs == ntexr);
 
     out.nregs      = nregs;

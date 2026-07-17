@@ -48,9 +48,9 @@ end
 load(bpfile,'same','diff','same_brod','diff_brod');
 
 %% Define Network Architecture
-% Shared subnetwork. Five selectable architectures; all output an H x W x nChan map
+% Shared subnetwork. Four selectable architectures; all output an H x W x nChan map
 % that poolStats reduces to a 2*nChan-vector (nChan channel means + nChan stds) per patch.
-arch = "pyramid";   % "baseline" | "dilated" | "multiscale" | "pyramid" | "pyramid_wide"
+arch = "pyramid";   % "baseline" | "dilated" | "multiscale" | "pyramid"
 
 switch arch
     case "baseline"
@@ -165,47 +165,6 @@ switch arch
         lgraph = connectLayers(lgraph, "cat", "t_conv");
         layers = lgraph;
         nChan = 32;
-
-    case "pyramid_wide"
-        % Slightly bigger "pyramid": SAME 3-scale front end and per-scale channels as the
-        % lean pyramid (bc = 8); only the tail is widened (nChan 32 -> 48, embedding 96) --
-        % ~11k learned params, just above the 7.6k lean pyramid. An earlier 29k version
-        % (bc = 16, nChan = 64) raised accuracy but erased the Brodatz-over-nat edge, so
-        % keep the capacity bump small.
-        % WATCH: with on-the-fly sampling there is no memorization to overfit, but extra
-        % capacity can lock onto natural-specific structure. Pass/fail = whether Brodatz
-        % stays >= test(nat). (bc, nChan are the capacity knobs -- sweep to trade off.)
-        cs = 12;    % common spatial size for the concat
-        bc = 8;     % channels per scale (same as the lean pyramid)
-        lgraph = layerGraph();
-        lgraph = addLayers(lgraph, ...
-            imageInputLayer([64 64 1],Normalization=@(img) img/mean(img(:)),Name="in"));     % 64x64
-        lgraph = addLayers(lgraph, [
-            convolution2dLayer(5,bc,WeightsInitializer="narrow-normal",BiasInitializer="narrow-normal",Name="p0_conv") % 60x60
-            reluLayer(Name="p0_relu")
-            resize2dLayer(OutputSize=[cs cs],Method="bilinear",Name="p0_rs")]);               % 12x12
-        lgraph = connectLayers(lgraph, "in", "p0_conv");
-        lgraph = addLayers(lgraph, [
-            averagePooling2dLayer(2,Stride=2,Name="p1_pool")                                  % 32x32
-            convolution2dLayer(5,bc,WeightsInitializer="narrow-normal",BiasInitializer="narrow-normal",Name="p1_conv") % 28x28
-            reluLayer(Name="p1_relu")
-            resize2dLayer(OutputSize=[cs cs],Method="bilinear",Name="p1_rs")]);               % 12x12
-        lgraph = connectLayers(lgraph, "in", "p1_pool");
-        lgraph = addLayers(lgraph, [
-            averagePooling2dLayer(4,Stride=4,Name="p2_pool")                                  % 16x16
-            convolution2dLayer(5,bc,WeightsInitializer="narrow-normal",BiasInitializer="narrow-normal",Name="p2_conv") % 12x12
-            reluLayer(Name="p2_relu")]);
-        lgraph = connectLayers(lgraph, "in", "p2_pool");
-        lgraph = addLayers(lgraph, depthConcatenationLayer(3,Name="cat"));                    % 12x12 x(3*bc)
-        lgraph = connectLayers(lgraph, "p0_rs",   "cat/in1");
-        lgraph = connectLayers(lgraph, "p1_rs",   "cat/in2");
-        lgraph = connectLayers(lgraph, "p2_relu", "cat/in3");
-        lgraph = addLayers(lgraph, [
-            convolution2dLayer(3,48,WeightsInitializer="narrow-normal",BiasInitializer="narrow-normal",Name="t_conv") % 10x10 x48
-            reluLayer(Name="t_relu")]);
-        lgraph = connectLayers(lgraph, "cat", "t_conv");
-        layers = lgraph;
-        nChan = 48;
 end
 
 net = dlnetwork(layers);
@@ -216,8 +175,8 @@ fcBias = dlarray(0.01*single(randn(1,1)));
 fcParams = struct("FcWeights",fcWeights,"FcBias",fcBias);
 
 %% train network
-numIterations = 5e3;
-miniBatchSize = 1e4;
+numIterations = 1e4;
+miniBatchSize = 1.8e4;
 learningRate = 1e-2;
 gradDecay = 0.9;
 gradDecaySq = 0.99;
@@ -230,11 +189,11 @@ trailingAvgSqParams = [];
 % learned kernels underneath (both refreshed together at each test iteration).
 monitor_fig = figure('Name', 'Training Progress');
 monitor_tl = tiledlayout(monitor_fig, 2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+title(monitor_tl, arch);
 ax = nexttile(monitor_tl);
 grid(ax, 'on');
 xlabel(ax, 'Iteration');
 ylabel(ax, 'Accuracy');
-title(ax, 'Training and Validation Accuracy');
 
 % Light blue, Mid blue, Orange, Green
 lineTrain = animatedline(ax, 'DisplayName', 'training (nat)', 'Color', [0.3010 0.7450 0.9330], 'LineWidth', 1.5);
@@ -362,26 +321,14 @@ while iteration < numIterations && isvalid(monitor_fig)
     end
 end
 
-%% Save the training monitor plot (FIRST, so a later error can't block it)
-% Resolve the folder in a way that works in EVERY run mode: mfilename('fullpath') is
-% only set on a full Run (empty under Run Section / Evaluate Selection), so fall back
-% to which() (finds train_net.m on the path -- setup adds twin-net), then pwd. The
-% exportgraphics is wrapped in try/catch so a failure is REPORTED, never silent --
-% previously a throw in the net-save below aborted this block before it ran.
-if exist('monitor_fig','var') && isvalid(monitor_fig)
-    timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
-    script_dir = fileparts(mfilename('fullpath'));
-    if isempty(script_dir), script_dir = fileparts(which('train_net.m')); end
-    if isempty(script_dir), script_dir = pwd; end
-    savePath = fullfile(script_dir, ['training_monitor_' timestamp '.png']);
-    try
-        exportgraphics(monitor_fig, savePath, 'Resolution', 300);
-        fprintf('Saved training monitor to %s\n', savePath);
-    catch ME
-        warning('train_net:monitorSave', 'Could not save monitor figure: %s', ME.message);
-    end
+%% Save the training monitor plot (before the net-save below, so its errors can't block this)
+timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
+savePath = fullfile(cfg.paths.repo_root, 'twin-net', ['training_monitor_' timestamp '.png']);
+if isvalid(monitor_fig)
+    exportgraphics(monitor_fig, savePath, 'Resolution', 300);
+    fprintf('Saved training monitor to %s\n', savePath);
 else
-    warning('train_net:monitorSave', 'monitor_fig missing or closed -- monitor not saved.');
+    warning('train_net:monitorSave', 'monitor_fig closed -- not saved.');
 end
 
 %% save the trained network (shipped artifact, kept under data/models)
